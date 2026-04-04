@@ -91,6 +91,8 @@ def init_db():
         columns = [row["name"] for row in conn.execute("PRAGMA table_info(calculations)").fetchall()]
         if "model_file" not in columns:
             conn.execute("ALTER TABLE calculations ADD COLUMN model_file TEXT")
+        if "model_orig_name" not in columns:
+            conn.execute("ALTER TABLE calculations ADD COLUMN model_orig_name TEXT DEFAULT ''")
     except Exception:
         pass
 

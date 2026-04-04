@@ -11,11 +11,13 @@
 
 - Считает стоимость печати. Учитывает филамент, электричество, износ принтера, наценку
 - Следит за остатками филамента. Остаток уменьшается сам после каждого расчёта
-- Хранит историю расчётов. Можно прикрепить файл модели (STL, OBJ, GCODE)
+- Хранит историю расчётов. Прикреплённый файл модели скачивается из истории
 - Показывает веб-интерфейс принтера. Вводишь IP — видишь морду принтера прямо в программе
 - Поддерживает камеру. Отдельный IP для видеопотока
+- Отслеживает часы до техобслуживания. Прогресс-бар на дашборде
+- Экспорт и импорт филаментов через JSON-файл
 - 9 цветовых тем. Каждая со светлой и тёмной версией
-- Три языка. Русский, английский, испанский
+- Три языка интерфейса: русский, английский, испанский
 - Настраиваемый порядок вкладок. Перетащи как удобно
 - Экспорт истории в CSV
 
@@ -23,9 +25,11 @@
 
 - Calculates print cost. Counts filament, electricity, printer wear, markup
 - Tracks filament remaining. Decreases automatically after each calculation
-- Saves calculation history. Attach model files (STL, OBJ, GCODE)
+- Saves calculation history. Attached model files downloadable from history
 - Shows printer web UI. Enter IP — see printer interface right in the app
 - Supports camera. Separate IP for video stream
+- Tracks maintenance hours. Progress bar on dashboard
+- Export and import filaments via JSON file
 - 9 color themes. Each with light and dark mode
 - Three languages. Russian, English, Spanish
 - Customizable tab order. Drag to reorder
@@ -75,21 +79,11 @@ npm start
 
 ### Windows
 
-**RU:**
-
 ```bash
 npm run build:win
 ```
 
 Результат: `dist/PrintPAL.exe` — портативный файл, ~75 МБ.
-
-**EN:**
-
-```bash
-npm run build:win
-```
-
-Output: `dist/PrintPAL.exe` — portable executable, ~75 MB.
 
 ### Linux
 
@@ -152,7 +146,7 @@ electron-app/
     ├── config.py           # Константы, пути к БД и uploads
     ├── translations.py     # Словари переводов (RU/EN/ES)
     ├── requirements.txt    # flask
-    ├── templates/          # Jinja2 шаблоны (7 страниц)
+    ├── templates/          # Jinja2 шаблоны (8 страниц)
     └── static/
         └── style.css       # CSS переменные, 9 тем, адаптив
 ```
@@ -186,6 +180,12 @@ total          = subtotal + markup
 ### Темы
 
 CSS переменные в `:root` и `[data-theme="dark"]`. 9 пресетов через `[data-preset="..."]` — каждый определяет ~60 переменных. Переключение через cookie, сервер генерирует `/theme.css` с актуальными значениями.
+
+### Хранение данных
+
+- **Dev-режим:** БД в папке проекта (`filament-calculator/filament.db`)
+- **Packaged режим:** `%APPDATA%\PrintPAL\data\filament.db` (Windows), `~/Library/Application Support/PrintPAL/data/` (macOS), `~/.local/share/PrintPAL/data/` (Linux)
+- Загруженные файлы моделей: рядом с БД в папке `uploads/`
 
 ---
 

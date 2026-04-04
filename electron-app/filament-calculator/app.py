@@ -37,7 +37,8 @@ def get_setting(key):
 
 
 @app.before_request
-def set_lang():
+def before_request():
+    init_db()
     lang = request.cookies.get("lang", "ru")
     if lang not in ("ru", "en", "es"):
         lang = "ru"
@@ -81,8 +82,26 @@ def index():
     filaments = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
     printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
     today_count = db.execute("SELECT COUNT(*) as cnt FROM calculations WHERE date(created_at) = date('now')").fetchone()["cnt"]
+
+    maintenance_info = []
+    for p in printers:
+        maint_hrs = dict(p).get("maintenance_hours") or 0
+        if maint_hrs > 0:
+            used = db.execute(
+                "SELECT COALESCE(SUM(print_time_hours), 0) as total FROM calculations WHERE printer_id = ?",
+                (p["id"],)
+            ).fetchone()["total"]
+            remaining = max(0, maint_hrs - used)
+            maintenance_info.append({
+                "name": p["name"],
+                "total": maint_hrs,
+                "used": round(used, 1),
+                "remaining": round(remaining, 1),
+                "pct": min(100, (used / maint_hrs) * 100),
+            })
+
     db.close()
-    return render_template("index.html", filaments=filaments, printers=printers, today_count=today_count, lang=request.lang)
+    return render_template("index.html", filaments=filaments, printers=printers, today_count=today_count, maintenance=maintenance_info, lang=request.lang)
 
 
 @app.route("/printers")
@@ -189,6 +208,49 @@ def delete_filament(id):
     return "ok", 200
 
 
+@app.route("/filaments/export")
+def export_filaments():
+    db = get_db()
+    filaments = db.execute("SELECT name, filament_type, color, spool_weight_g, spool_price, remaining_g FROM filaments ORDER BY name").fetchall()
+    db.close()
+    import json
+    data = [dict(f) for f in filaments]
+    return Response(json.dumps(data, indent=2, ensure_ascii=False), mimetype="application/json",
+                    headers={"Content-Disposition": "attachment;filename=filaments.json"})
+
+
+@app.route("/filaments/import", methods=["POST"])
+def import_filaments():
+    file = request.files.get("import_file")
+    if not file or not file.filename:
+        flash("Файл не выбран", "error")
+        return redirect(url_for("filaments"))
+    import json
+    try:
+        data = json.load(file.stream)
+    except Exception:
+        flash("Ошибка чтения JSON", "error")
+        return redirect(url_for("filaments"))
+    if not isinstance(data, list):
+        flash("Неверный формат файла", "error")
+        return redirect(url_for("filaments"))
+    db = get_db()
+    count = 0
+    for f in data:
+        try:
+            db.execute(
+                "INSERT INTO filaments (name, filament_type, color, spool_weight_g, spool_price, remaining_g) VALUES (?, ?, ?, ?, ?, ?)",
+                (f["name"], f["filament_type"], f["color"], float(f["spool_weight_g"]), float(f["spool_price"]), float(f.get("remaining_g", f["spool_weight_g"])))
+            )
+            count += 1
+        except Exception:
+            pass
+    db.commit()
+    db.close()
+    flash(f"Импортировано {count} филаментов", "success")
+    return redirect(url_for("filaments"))
+
+
 @app.route("/calculator")
 def calculator():
     db = get_db()
@@ -216,6 +278,13 @@ def preview_cost():
     base_rate = float(request.form.get("base_rate", DEFAULT_BASE_RATE))
     markup_pct = float(request.form.get("markup_percent", DEFAULT_MARKUP_PERCENT))
 
+    tmp_file = None
+    tmp_orig_name = ""
+    if "model_file" in request.files:
+        file = request.files["model_file"]
+        if file and file.filename:
+            tmp_file, tmp_orig_name = save_uploaded_file(file)
+
     all_printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
     all_filaments = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
     db.close()
@@ -236,6 +305,8 @@ def preview_cost():
             "print_time": print_time,
             "base_rate": base_rate,
             "markup_pct": markup_pct,
+            "tmp_file": tmp_file,
+            "tmp_orig_name": tmp_orig_name,
             **costs,
         },
         lang=request.lang,
@@ -254,17 +325,19 @@ def save_calculation():
 
     costs = calc_cost(printer, filament, weight_g, print_time, base_rate, markup_pct)
 
-    model_file = None
-    if "model_file" in request.files:
+    model_file = request.form.get("tmp_file") or None
+    model_orig_name = request.form.get("tmp_orig_name") or ""
+    if not model_file and "model_file" in request.files:
         file = request.files["model_file"]
         if file and file.filename:
-            safe_name, _ = save_uploaded_file(file)
+            safe_name, orig_name = save_uploaded_file(file)
             if safe_name:
                 model_file = safe_name
+                model_orig_name = orig_name
 
     db.execute(
-        "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, markup_percent, markup_amount, total_cost, model_file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (printer["id"], filament["id"], request.form["model_name"], weight_g, print_time, base_rate, costs["filament_cost"], costs["electricity_cost"], costs["depreciation_cost"], markup_pct, costs["markup_amount"], costs["total"], model_file)
+        "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, markup_percent, markup_amount, total_cost, model_file, model_orig_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (printer["id"], filament["id"], request.form["model_name"], weight_g, print_time, base_rate, costs["filament_cost"], costs["electricity_cost"], costs["depreciation_cost"], markup_pct, costs["markup_amount"], costs["total"], model_file, model_orig_name)
     )
     db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (weight_g, filament["id"]))
     db.commit()

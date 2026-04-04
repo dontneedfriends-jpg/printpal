@@ -44,8 +44,15 @@
         <div class="form-group">
             <label for="model_file">{{ _('model_file') }} <span class="optional">{{ _('optional') }}</span></label>
             <input type="file" id="model_file" name="model_file" accept=".stl,.obj,.3mf,.gcode,.step,.stp,.amf">
+            {% if preview and preview.tmp_file %}
+            <span class="file-hint">📎 {{ preview.tmp_orig_name }} <small>(файл загружен)</small></span>
+            {% endif %}
             <span class="file-hint">STL, OBJ, 3MF, GCODE, STEP, AMF — до 50 МБ</span>
         </div>
+        {% if preview and preview.tmp_file %}
+        <input type="hidden" name="tmp_file" value="{{ preview.tmp_file }}">
+        <input type="hidden" name="tmp_orig_name" value="{{ preview.tmp_orig_name }}">
+        {% endif %}
         <div class="form-group form-actions">
             <button type="submit" formaction="{{ url_for('preview_cost') }}" class="btn btn-primary">{{ _('preview') }}</button>
             {% if preview %}

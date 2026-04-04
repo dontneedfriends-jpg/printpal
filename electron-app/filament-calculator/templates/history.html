@@ -23,7 +23,7 @@
                 <span class="hist-tag">{{ "%.0f"|format(c.weight_g) }}г</span>
                 <span class="hist-tag">{{ "%.1f"|format(c.print_time_hours) }}ч</span>
                 {% if c.model_file %}
-                <a href="{{ url_for('download_file', filename=c.model_file) }}" class="hist-tag hist-file" title="Download model" download>📎 файл</a>
+                <a href="{{ url_for('download_file', filename=c.model_file) }}" class="hist-tag hist-file" title="{{ c.model_orig_name or 'Download model' }}" download>📎 {{ c.model_orig_name or 'файл' }}</a>
                 {% endif %}
             </div>
             <div class="hist-cost">

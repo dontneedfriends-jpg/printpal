@@ -18,6 +18,25 @@
     </div>
 </div>
 
+{% if maintenance %}
+<h2>Техобслуживание</h2>
+<div class="maintenance-grid">
+    {% for m in maintenance %}
+    <div class="maint-card {{ 'maint-ok' if m.remaining > m.total * 0.3 else 'maint-warn' if m.remaining > m.total * 0.1 else 'maint-crit' }}">
+        <div class="maint-name">{{ m.name }}</div>
+        <div class="maint-hours">
+            <span class="maint-remaining">{{ m.remaining }} ч</span>
+            <span class="maint-total">из {{ m.total }} ч</span>
+        </div>
+        <div class="maint-bar">
+            <div class="maint-fill" style="width: {{ m.pct|int }}%"></div>
+        </div>
+        <div class="maint-detail">{{ m.used }} ч использовано</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <h2>{{ _('remaining') }}</h2>
 <div class="filament-grid">
     {% for f in filaments %}
@@ -41,4 +60,33 @@
 </div>
 
 <a href="{{ url_for('calculator') }}" class="btn btn-primary btn-large">{{ _('go_calc') }}</a>
+
+<style>
+.maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.maint-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 1.15rem;
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    border-left: 4px solid var(--success);
+    transition: all 0.3s ease;
+}
+.maint-card.maint-warn { border-left-color: var(--warning-accent); }
+.maint-card.maint-crit { border-left-color: var(--low-accent); }
+.maint-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.4rem; }
+.maint-hours { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+.maint-remaining { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+.maint-total { font-size: 0.82rem; color: var(--text-muted); }
+.maint-bar { height: 6px; background: var(--bg-remaining-bar); border-radius: 3px; overflow: hidden; }
+.maint-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.4s ease; }
+.maint-card.maint-warn .maint-fill { background: var(--warning-accent); }
+.maint-card.maint-crit .maint-fill { background: var(--low-accent); }
+.maint-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; }
+</style>
 {% endblock %}
