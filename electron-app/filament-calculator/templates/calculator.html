@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_calculator') }} - PrintPAL{% endblock %}
+{% block content %}
+<h1>{{ _('calc_cost') }}</h1>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('preview_cost') }}" class="form-grid" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="printer_id">{{ _('printer') }}</label>
+            <select id="printer_id" name="printer_id" required>
+                {% for p in printers %}
+                <option value="{{ p.id }}" {% if preview and preview.printer.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.power_watts }} Вт)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="filament_id">{{ _('filament') }}</label>
+            <select id="filament_id" name="filament_id" required>
+                {% for f in filaments %}
+                <option value="{{ f.id }}" {% if preview and preview.filament.id == f.id %}selected{% endif %}>{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} г)</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="model_name">{{ _('model_name') }}</label>
+            <input type="text" id="model_name" name="model_name" required placeholder="Benchy" value="{{ preview.model_name if preview else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="weight_g">{{ _('model_weight') }}</label>
+            <input type="number" id="weight_g" name="weight_g" step="0.1" required placeholder="50" value="{{ preview.weight_g if preview else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="print_time_hours">{{ _('print_time') }}</label>
+            <input type="number" id="print_time_hours" name="print_time_hours" step="0.1" required placeholder="3.5" value="{{ preview.print_time if preview else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="base_rate">{{ _('base_rate') }}</label>
+            <input type="number" id="base_rate" name="base_rate" step="0.01" value="{{ preview.base_rate if preview else default_base }}" required>
+        </div>
+        <div class="form-group">
+            <label for="markup_percent">{{ _('markup') }}</label>
+            <input type="number" id="markup_percent" name="markup_percent" step="1" value="{{ preview.markup_pct if preview else default_markup }}" required>
+        </div>
+        <div class="form-group">
+            <label for="model_file">{{ _('model_file') }} <span class="optional">{{ _('optional') }}</span></label>
+            <input type="file" id="model_file" name="model_file" accept=".stl,.obj,.3mf,.gcode,.step,.stp,.amf">
+            <span class="file-hint">STL, OBJ, 3MF, GCODE, STEP, AMF — до 50 МБ</span>
+        </div>
+        <div class="form-group form-actions">
+            <button type="submit" formaction="{{ url_for('preview_cost') }}" class="btn btn-primary">{{ _('preview') }}</button>
+            {% if preview %}
+            <button type="submit" formaction="{{ url_for('save_calculation') }}" class="btn btn-success">{{ _('save_calc') }}</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if preview %}
+<div class="card cost-breakdown">
+    <h2>{{ _('cost_breakdown') }}: {{ preview.model_name }}</h2>
+    <div class="cost-table">
+        <div class="cost-row"><span>{{ _('printer') }}:</span><span>{{ preview.printer.name }}</span></div>
+        <div class="cost-row"><span>{{ _('filament') }}:</span><span>{{ preview.filament.name }} ({{ preview.filament.color }})</span></div>
+        <div class="cost-row"><span>{{ _('price_per_g') }}:</span><span>{{ "%.2f"|format(preview.price_per_gram) }} руб</span></div>
+        <div class="cost-row"><span>{{ _('filament_cost') }} ({{ "%.1f"|format(preview.weight_g) }} г):</span><span>{{ "%.2f"|format(preview.filament_cost) }} руб</span></div>
+        <div class="cost-row"><span>{{ _('electricity') }} ({{ "%.1f"|format(preview.print_time) }} ч × {{ preview.printer.power_watts }} Вт):</span><span>{{ "%.2f"|format(preview.electricity_cost) }} руб</span></div>
+        <div class="cost-row"><span>{{ _('depreciation') }} ({{ "%.1f"|format(preview.print_time) }} ч):</span><span>{{ "%.2f"|format(preview.depreciation_cost) }} руб</span></div>
+        <div class="cost-row"><span>{{ _('base_rate') }}:</span><span>{{ "%.2f"|format(preview.base_rate) }} руб</span></div>
+        <div class="cost-row subtotal-row"><span>{{ _('subtotal') }}:</span><span>{{ "%.2f"|format(preview.subtotal) }} руб</span></div>
+        <div class="cost-row"><span>{{ _('markup_amount') }} ({{ "%.0f"|format(preview.markup_pct) }}%):</span><span>{{ "%.2f"|format(preview.markup_amount) }} руб</span></div>
+        <div class="cost-row total-row"><span>{{ _('total') }}:</span><span>{{ "%.2f"|format(preview.total) }} руб</span></div>
+    </div>
+</div>
+{% endif %}
+
+{% if not printers or not filaments %}
+<div class="card warning">
+    <p>{{ _('printer') }} & {{ _('filament') }} {{ _('required') if _('required') else 'required' }}.</p>
+    {% if not printers %}<a href="{{ url_for('printers') }}" class="btn btn-small">{{ _('add_printer') }}</a>{% endif %}
+    {% if not filaments %}<a href="{{ url_for('filaments') }}" class="btn btn-small">{{ _('add_filament') }}</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

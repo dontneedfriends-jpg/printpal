@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_history') }} - PrintPAL{% endblock %}
+{% block content %}
+<h1>{{ _('history') }}</h1>
+
+<div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+    <input type="text" id="hist-search" placeholder="{{ _('search_hist') }}" style="flex:1; min-width:200px; padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); color:var(--text); font-size:0.9rem;" oninput="filterHistory()">
+    <a href="{{ url_for('export_history') }}" class="btn btn-primary" style="white-space:nowrap;">📥 {{ _('export_csv') }}</a>
+</div>
+
+<div class="card" style="padding:0.5rem;">
+    {% if calculations %}
+    {% for c in calculations %}
+    <div class="hist-row" data-search="{{ c.model_name|lower }} {{ c.printer_name|lower }} {{ c.filament_name|lower }} {{ c.filament_color|lower }}">
+        <div class="hist-main">
+            <div class="hist-info">
+                <div class="hist-date">{{ c.created_at[:10] }}</div>
+                <div class="hist-model">{{ c.model_name }}</div>
+            </div>
+            <div class="hist-details">
+                <span class="hist-tag">{{ c.printer_name }}</span>
+                <span class="hist-tag">{{ c.filament_name }} {{ c.filament_color }}</span>
+                <span class="hist-tag">{{ "%.0f"|format(c.weight_g) }}г</span>
+                <span class="hist-tag">{{ "%.1f"|format(c.print_time_hours) }}ч</span>
+                {% if c.model_file %}
+                <a href="{{ url_for('download_file', filename=c.model_file) }}" class="hist-tag hist-file" title="Download model" download>📎 файл</a>
+                {% endif %}
+            </div>
+            <div class="hist-cost">
+                <span class="hist-cost-sub">{{ "%.2f"|format(c.filament_cost) }} + {{ "%.2f"|format(c.electricity_cost) }} + {{ "%.2f"|format(c.depreciation_cost) }}</span>
+                <span class="hist-cost-total">{{ "%.2f"|format(c.total_cost) }} ₽</span>
+            </div>
+            <button class="btn btn-danger btn-small" onclick="deleteCalc({{ c.id }})">✕</button>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty-msg">{{ _('no_history') }}. <a href="{{ url_for('calculator') }}">{{ _('make_first') }}</a></p>
+    {% endif %}
+</div>
+
+<script>
+function filterHistory() {
+    var q = document.getElementById('hist-search').value.toLowerCase();
+    document.querySelectorAll('.hist-row').forEach(function(row) {
+        row.style.display = row.getAttribute('data-search').indexOf(q) !== -1 ? '' : 'none';
+    });
+}
+
+function deleteCalc(id) {
+    appConfirm('{{ _('confirm_delete') }}').then(function(ok) {
+        if (!ok) return;
+        var fd = new FormData();
+        fetch('/history/' + id + '/delete', { method: 'POST', body: fd })
+        .then(function() {
+            var rows = document.querySelectorAll('.hist-row');
+            rows.forEach(function(r) {
+                if (r.querySelector('button[onclick*="' + id + '"]')) r.remove();
+            });
+            showToast('{{ _('deleted') }}', 'success');
+        });
+    });
+}
+</script>
+{% endblock %}

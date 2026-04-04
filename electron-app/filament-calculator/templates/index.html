@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_home') }} - PrintPAL{% endblock %}
+{% block content %}
+<h1>{{ _('dashboard') }}</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ printers|length }}</div>
+        <div class="stat-label">{{ _('printers_count') }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ filaments|length }}</div>
+        <div class="stat-label">{{ _('spools_count') }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ today_count }}</div>
+        <div class="stat-label">{{ _('calc_today') }}</div>
+    </div>
+</div>
+
+<h2>{{ _('remaining') }}</h2>
+<div class="filament-grid">
+    {% for f in filaments %}
+    <div class="filament-card {{ 'low' if f.remaining_g < 200 else 'medium' if f.remaining_g < 500 else 'ok' }}">
+        <div class="filament-header">
+            <span class="filament-name">{{ f.name }}</span>
+            <span class="filament-color">{{ f.color }}</span>
+        </div>
+        <div class="filament-type">{{ f.filament_type }}</div>
+        <div class="filament-remaining">
+            <span class="remaining-value">{{ "%.0f"|format(f.remaining_g) }} г</span>
+            <span class="remaining-bar">
+                <span class="remaining-fill" style="width: {{ (f.remaining_g / f.spool_weight_g * 100)|int }}%"></span>
+            </span>
+        </div>
+        <div class="filament-price">{{ "%.2f"|format(f.price_per_g) }} руб/г</div>
+    </div>
+    {% else %}
+    <p class="empty-msg">{{ _('no_filaments') }}. <a href="{{ url_for('filaments') }}">{{ _('add_filament') }}</a></p>
+    {% endfor %}
+</div>
+
+<a href="{{ url_for('calculator') }}" class="btn btn-primary btn-large">{{ _('go_calc') }}</a>
+{% endblock %}
