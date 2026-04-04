@@ -17,7 +17,7 @@
     "appId": "com.printpal.app",
     "productName": "PrintPAL",
     "directories": {
-      "output": "dist"
+      "output": "dist5"
     },
     "files": [
       "main.js",
@@ -38,10 +38,6 @@
     },
     "portable": {
       "artifactName": "PrintPAL.exe"
-    },
-    "linux": {
-      "category": "Utility",
-      "target": "tar.gz"
     }
   }
 }
