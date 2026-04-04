@@ -38,6 +38,10 @@
     },
     "portable": {
       "artifactName": "PrintPAL.exe"
+    },
+    "linux": {
+      "category": "Utility",
+      "target": "tar.gz"
     }
   }
 }

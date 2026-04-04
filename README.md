@@ -73,13 +73,15 @@ npm start
 
 ## Сборка / Build
 
+### Windows
+
 **RU:**
 
 ```bash
 npm run build:win
 ```
 
-Результат: `dist/PrintPAL.exe` — портативный файл, ~75 МБ. Не требует установки.
+Результат: `dist/PrintPAL.exe` — портативный файл, ~75 МБ.
 
 **EN:**
 
@@ -87,7 +89,36 @@ npm run build:win
 npm run build:win
 ```
 
-Output: `dist/PrintPAL.exe` — portable executable, ~75 MB. No installation needed.
+Output: `dist/PrintPAL.exe` — portable executable, ~75 MB.
+
+### Linux
+
+```bash
+cd electron-app
+npm install
+npx electron-builder --linux
+```
+
+Результат: `dist/printpal-1.0.0.tar.gz` — архив, ~98 МБ.
+
+Запуск:
+```bash
+tar -xzf printpal-1.0.0.tar.gz
+cd PrintPAL
+./PrintPAL
+```
+
+### macOS
+
+Сборка macOS возможна только на Mac.
+
+```bash
+cd electron-app
+npm install
+npx electron-builder --mac
+```
+
+Результат: `dist/PrintPAL-1.0.0.dmg`
 
 ---
 

@@ -6,3 +6,4 @@ uploads/
 __pycache__/
 .env
 .DS_Store
+RELEASE_NOTES.md
