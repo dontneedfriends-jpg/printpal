@@ -25,8 +25,8 @@
             <tr id="prow-{{ p.id }}">
                 <td>{{ p.name }}</td>
                 <td>{{ p.ip_address or '—' }}</td>
-                <td>{{ p.power_watts }} Вт</td>
-                <td>{{ "%.2f"|format(p.depreciation_per_hour) }} руб</td>
+                <td>{{ p.power_watts }} {{ _('watts') }}</td>
+                <td>{{ "%.2f"|format(p.depreciation_per_hour) }} {{ _('rub') }}</td>
                 <td>
                     <button class="btn btn-small" onclick="editPrinter({{ p.id }}, '{{ p.name|replace("'","\\'") }}', {{ p.power_watts }}, {{ p.purchase_price }}, {{ p.depreciation_per_hour }}, '{{ p.ip_address|default('', true)|replace("'","\\'") }}', '{{ p.camera_ip|default('', true)|replace("'","\\'") }}')">✏️</button>
                     <button class="btn btn-danger btn-small" onclick="deletePrinter({{ p.id }})">🗑️</button>

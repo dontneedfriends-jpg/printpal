@@ -19,19 +19,19 @@
 </div>
 
 {% if maintenance %}
-<h2>Техобслуживание</h2>
+<h2>{{ _('maintenance') }}</h2>
 <div class="maintenance-grid">
     {% for m in maintenance %}
     <div class="maint-card {{ 'maint-ok' if m.remaining > m.total * 0.3 else 'maint-warn' if m.remaining > m.total * 0.1 else 'maint-crit' }}">
         <div class="maint-name">{{ m.name }}</div>
         <div class="maint-hours">
-            <span class="maint-remaining">{{ m.remaining }} ч</span>
-            <span class="maint-total">из {{ m.total }} ч</span>
+            <span class="maint-remaining">{{ m.remaining }} {{ _('maint_hours') }}</span>
+            <span class="maint-total">{{ _('maint_from') }} {{ m.total }} {{ _('maint_hours') }}</span>
         </div>
         <div class="maint-bar">
             <div class="maint-fill" style="width: {{ m.pct|int }}%"></div>
         </div>
-        <div class="maint-detail">{{ m.used }} ч использовано</div>
+        <div class="maint-detail">{{ m.used }} {{ _('maint_used') }}</div>
     </div>
     {% endfor %}
 </div>
@@ -47,12 +47,12 @@
         </div>
         <div class="filament-type">{{ f.filament_type }}</div>
         <div class="filament-remaining">
-            <span class="remaining-value">{{ "%.0f"|format(f.remaining_g) }} г</span>
+            <span class="remaining-value">{{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }}</span>
             <span class="remaining-bar">
                 <span class="remaining-fill" style="width: {{ (f.remaining_g / f.spool_weight_g * 100)|int }}%"></span>
             </span>
         </div>
-        <div class="filament-price">{{ "%.2f"|format(f.price_per_g) }} руб/г</div>
+        <div class="filament-price">{{ "%.2f"|format(f.price_per_g) }} {{ _('rub_g') }}</div>
     </div>
     {% else %}
     <p class="empty-msg">{{ _('no_filaments') }}. <a href="{{ url_for('filaments') }}">{{ _('add_filament') }}</a></p>

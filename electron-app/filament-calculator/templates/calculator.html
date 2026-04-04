@@ -9,7 +9,7 @@
             <label for="printer_id">{{ _('printer') }}</label>
             <select id="printer_id" name="printer_id" required>
                 {% for p in printers %}
-                <option value="{{ p.id }}" {% if preview and preview.printer.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.power_watts }} Вт)</option>
+                <option value="{{ p.id }}" {% if preview and preview.printer.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.power_watts }} {{ _('watts') }})</option>
                 {% endfor %}
             </select>
         </div>
@@ -17,7 +17,7 @@
             <label for="filament_id">{{ _('filament') }}</label>
             <select id="filament_id" name="filament_id" required>
                 {% for f in filaments %}
-                <option value="{{ f.id }}" {% if preview and preview.filament.id == f.id %}selected{% endif %}>{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} г)</option>
+                <option value="{{ f.id }}" {% if preview and preview.filament.id == f.id %}selected{% endif %}>{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }})</option>
                 {% endfor %}
             </select>
         </div>
@@ -45,9 +45,9 @@
             <label for="model_file">{{ _('model_file') }} <span class="optional">{{ _('optional') }}</span></label>
             <input type="file" id="model_file" name="model_file" accept=".stl,.obj,.3mf,.gcode,.step,.stp,.amf">
             {% if preview and preview.tmp_file %}
-            <span class="file-hint">📎 {{ preview.tmp_orig_name }} <small>(файл загружен)</small></span>
+            <span class="file-hint">📎 {{ preview.tmp_orig_name }} <small>({{ _('file_uploaded') }})</small></span>
             {% endif %}
-            <span class="file-hint">STL, OBJ, 3MF, GCODE, STEP, AMF — до 50 МБ</span>
+            <span class="file-hint">{{ _('file_hint') }}</span>
         </div>
         {% if preview and preview.tmp_file %}
         <input type="hidden" name="tmp_file" value="{{ preview.tmp_file }}">
@@ -68,21 +68,21 @@
     <div class="cost-table">
         <div class="cost-row"><span>{{ _('printer') }}:</span><span>{{ preview.printer.name }}</span></div>
         <div class="cost-row"><span>{{ _('filament') }}:</span><span>{{ preview.filament.name }} ({{ preview.filament.color }})</span></div>
-        <div class="cost-row"><span>{{ _('price_per_g') }}:</span><span>{{ "%.2f"|format(preview.price_per_gram) }} руб</span></div>
-        <div class="cost-row"><span>{{ _('filament_cost') }} ({{ "%.1f"|format(preview.weight_g) }} г):</span><span>{{ "%.2f"|format(preview.filament_cost) }} руб</span></div>
-        <div class="cost-row"><span>{{ _('electricity') }} ({{ "%.1f"|format(preview.print_time) }} ч × {{ preview.printer.power_watts }} Вт):</span><span>{{ "%.2f"|format(preview.electricity_cost) }} руб</span></div>
-        <div class="cost-row"><span>{{ _('depreciation') }} ({{ "%.1f"|format(preview.print_time) }} ч):</span><span>{{ "%.2f"|format(preview.depreciation_cost) }} руб</span></div>
-        <div class="cost-row"><span>{{ _('base_rate') }}:</span><span>{{ "%.2f"|format(preview.base_rate) }} руб</span></div>
-        <div class="cost-row subtotal-row"><span>{{ _('subtotal') }}:</span><span>{{ "%.2f"|format(preview.subtotal) }} руб</span></div>
-        <div class="cost-row"><span>{{ _('markup_amount') }} ({{ "%.0f"|format(preview.markup_pct) }}%):</span><span>{{ "%.2f"|format(preview.markup_amount) }} руб</span></div>
-        <div class="cost-row total-row"><span>{{ _('total') }}:</span><span>{{ "%.2f"|format(preview.total) }} руб</span></div>
+        <div class="cost-row"><span>{{ _('price_per_g') }}:</span><span>{{ "%.2f"|format(preview.price_per_gram) }} {{ _('rub_g') }}</span></div>
+        <div class="cost-row"><span>{{ _('filament_cost') }} ({{ "%.1f"|format(preview.weight_g) }} {{ _('grams') }}):</span><span>{{ "%.2f"|format(preview.filament_cost) }} {{ _('rub') }}</span></div>
+        <div class="cost-row"><span>{{ _('electricity') }} ({{ "%.1f"|format(preview.print_time) }} {{ _('hours') }} × {{ preview.printer.power_watts }} {{ _('watts') }}):</span><span>{{ "%.2f"|format(preview.electricity_cost) }} {{ _('rub') }}</span></div>
+        <div class="cost-row"><span>{{ _('depreciation') }} ({{ "%.1f"|format(preview.print_time) }} {{ _('hours') }}):</span><span>{{ "%.2f"|format(preview.depreciation_cost) }} {{ _('rub') }}</span></div>
+        <div class="cost-row"><span>{{ _('base_rate') }}:</span><span>{{ "%.2f"|format(preview.base_rate) }} {{ _('rub') }}</span></div>
+        <div class="cost-row subtotal-row"><span>{{ _('subtotal') }}:</span><span>{{ "%.2f"|format(preview.subtotal) }} {{ _('rub') }}</span></div>
+        <div class="cost-row"><span>{{ _('markup_amount') }} ({{ "%.0f"|format(preview.markup_pct) }}%):</span><span>{{ "%.2f"|format(preview.markup_amount) }} {{ _('rub') }}</span></div>
+        <div class="cost-row total-row"><span>{{ _('total') }}:</span><span>{{ "%.2f"|format(preview.total) }} {{ _('rub') }}</span></div>
     </div>
 </div>
 {% endif %}
 
 {% if not printers or not filaments %}
 <div class="card warning">
-    <p>{{ _('printer') }} & {{ _('filament') }} {{ _('required') if _('required') else 'required' }}.</p>
+    <p>{{ _('printer') }} & {{ _('filament') }} {{ _('required') }}.</p>
     {% if not printers %}<a href="{{ url_for('printers') }}" class="btn btn-small">{{ _('add_printer') }}</a>{% endif %}
     {% if not filaments %}<a href="{{ url_for('filaments') }}" class="btn btn-small">{{ _('add_filament') }}</a>{% endif %}
 </div>
