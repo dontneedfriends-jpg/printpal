@@ -272,11 +272,28 @@ def calculator():
 def preview_cost():
     db = get_db()
     printer = db.execute("SELECT * FROM printers WHERE id = ?", (request.form["printer_id"],)).fetchone()
-    filament = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments WHERE id = ?", (request.form["filament_id"],)).fetchone()
-    weight_g = float(request.form["weight_g"])
     print_time = float(request.form["print_time_hours"])
     base_rate = float(request.form.get("base_rate", DEFAULT_BASE_RATE))
     markup_pct = float(request.form.get("markup_percent", DEFAULT_MARKUP_PERCENT))
+
+    filament_ids = request.form.getlist("filament_id")
+    filament_weights = request.form.getlist("filament_weight")
+    total_weight = 0
+    filament_costs_list = []
+    total_filament_cost = 0
+    for fid, fweight in zip(filament_ids, filament_weights):
+        f = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
+        w = float(fweight)
+        cost = w * f["price_per_g"]
+        total_weight += w
+        total_filament_cost += cost
+        filament_costs_list.append({
+            "id": f["id"],
+            "name": f["name"],
+            "color": f["color"],
+            "weight": w,
+            "cost": cost,
+        })
 
     tmp_file = None
     tmp_orig_name = ""
@@ -289,7 +306,11 @@ def preview_cost():
     all_filaments = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
     db.close()
 
-    costs = calc_cost(printer, filament, weight_g, print_time, base_rate, markup_pct)
+    electricity_cost = print_time * (printer["power_watts"] / 1000) * get_setting("electricity_rate")
+    depreciation_cost = print_time * printer["depreciation_per_hour"]
+    subtotal = base_rate + total_filament_cost + electricity_cost + depreciation_cost
+    markup_amount = subtotal * (markup_pct / 100)
+    total = subtotal + markup_amount
 
     return render_template(
         "calculator.html",
@@ -299,15 +320,19 @@ def preview_cost():
         default_markup=get_setting("markup_percent"),
         preview={
             "printer": printer,
-            "filament": filament,
             "model_name": request.form["model_name"],
-            "weight_g": weight_g,
             "print_time": print_time,
             "base_rate": base_rate,
             "markup_pct": markup_pct,
             "tmp_file": tmp_file,
             "tmp_orig_name": tmp_orig_name,
-            **costs,
+            "filament_costs": filament_costs_list,
+            "total_weight": total_weight,
+            "electricity_cost": electricity_cost,
+            "depreciation_cost": depreciation_cost,
+            "subtotal": subtotal,
+            "markup_amount": markup_amount,
+            "total": total,
         },
         lang=request.lang,
     )
@@ -317,13 +342,25 @@ def preview_cost():
 def save_calculation():
     db = get_db()
     printer = db.execute("SELECT * FROM printers WHERE id = ?", (request.form["printer_id"],)).fetchone()
-    filament = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments WHERE id = ?", (request.form["filament_id"],)).fetchone()
-    weight_g = float(request.form["weight_g"])
     print_time = float(request.form["print_time_hours"])
     base_rate = float(request.form["base_rate"])
     markup_pct = float(request.form["markup_percent"])
 
-    costs = calc_cost(printer, filament, weight_g, print_time, base_rate, markup_pct)
+    filament_ids = request.form.getlist("filament_id")
+    filament_weights = request.form.getlist("filament_weight")
+    total_weight = 0
+    total_filament_cost = 0
+    for fid, fweight in zip(filament_ids, filament_weights):
+        f = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
+        w = float(fweight)
+        total_weight += w
+        total_filament_cost += w * f["price_per_g"]
+
+    electricity_cost = print_time * (printer["power_watts"] / 1000) * get_setting("electricity_rate")
+    depreciation_cost = print_time * printer["depreciation_per_hour"]
+    subtotal = base_rate + total_filament_cost + electricity_cost + depreciation_cost
+    markup_amount = subtotal * (markup_pct / 100)
+    total = subtotal + markup_amount
 
     model_file = request.form.get("tmp_file") or None
     model_orig_name = request.form.get("tmp_orig_name") or ""
@@ -335,14 +372,16 @@ def save_calculation():
                 model_file = safe_name
                 model_orig_name = orig_name
 
+    first_fid = filament_ids[0] if filament_ids else 1
     db.execute(
         "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, markup_percent, markup_amount, total_cost, model_file, model_orig_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (printer["id"], filament["id"], request.form["model_name"], weight_g, print_time, base_rate, costs["filament_cost"], costs["electricity_cost"], costs["depreciation_cost"], markup_pct, costs["markup_amount"], costs["total"], model_file, model_orig_name)
+        (printer["id"], first_fid, request.form["model_name"], total_weight, print_time, base_rate, total_filament_cost, electricity_cost, depreciation_cost, markup_pct, markup_amount, total, model_file, model_orig_name)
     )
-    db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (weight_g, filament["id"]))
+    for fid, fweight in zip(filament_ids, filament_weights):
+        db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (float(fweight), fid))
     db.commit()
     db.close()
-    flash(f"Расчёт сохранён! Итого: {costs['total']:.2f} руб.", "success")
+    flash(f"Расчёт сохранён! Итого: {total:.2f} руб.", "success")
     return redirect(url_for("history"))
 
 

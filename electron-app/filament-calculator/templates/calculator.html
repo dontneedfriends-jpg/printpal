@@ -13,21 +13,23 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="form-group">
-            <label for="filament_id">{{ _('filament') }}</label>
-            <select id="filament_id" name="filament_id" required>
-                {% for f in filaments %}
-                <option value="{{ f.id }}" {% if preview and preview.filament.id == f.id %}selected{% endif %}>{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }})</option>
-                {% endfor %}
-            </select>
+        <div class="form-group" style="grid-column: 1 / -1;">
+            <label>{{ _('filament') }}</label>
+            <div id="filament-rows">
+                <div class="filament-row">
+                    <select name="filament_id" required>
+                        {% for f in filaments %}
+                        <option value="{{ f.id }}">{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }})</option>
+                        {% endfor %}
+                    </select>
+                    <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>
+                    <button type="button" class="add-filament-btn" onclick="addFilamentRow()" title="Добавить">+</button>
+                </div>
+            </div>
         </div>
         <div class="form-group">
             <label for="model_name">{{ _('model_name') }}</label>
             <input type="text" id="model_name" name="model_name" required placeholder="Benchy" value="{{ preview.model_name if preview else '' }}">
-        </div>
-        <div class="form-group">
-            <label for="weight_g">{{ _('model_weight') }}</label>
-            <input type="number" id="weight_g" name="weight_g" step="0.1" required placeholder="50" value="{{ preview.weight_g if preview else '' }}">
         </div>
         <div class="form-group">
             <label for="print_time_hours">{{ _('print_time') }}</label>
@@ -67,9 +69,9 @@
     <h2>{{ _('cost_breakdown') }}: {{ preview.model_name }}</h2>
     <div class="cost-table">
         <div class="cost-row"><span>{{ _('printer') }}:</span><span>{{ preview.printer.name }}</span></div>
-        <div class="cost-row"><span>{{ _('filament') }}:</span><span>{{ preview.filament.name }} ({{ preview.filament.color }})</span></div>
-        <div class="cost-row"><span>{{ _('price_per_g') }}:</span><span>{{ "%.2f"|format(preview.price_per_gram) }} {{ _('rub_g') }}</span></div>
-        <div class="cost-row"><span>{{ _('filament_cost') }} ({{ "%.1f"|format(preview.weight_g) }} {{ _('grams') }}):</span><span>{{ "%.2f"|format(preview.filament_cost) }} {{ _('rub') }}</span></div>
+        {% for fc in preview.filament_costs %}
+        <div class="cost-row"><span>{{ fc.name }} ({{ fc.color }}):</span><span>{{ "%.1f"|format(fc.weight) }} {{ _('grams') }} — {{ "%.2f"|format(fc.cost) }} {{ _('rub') }}</span></div>
+        {% endfor %}
         <div class="cost-row"><span>{{ _('electricity') }} ({{ "%.1f"|format(preview.print_time) }} {{ _('hours') }} × {{ preview.printer.power_watts }} {{ _('watts') }}):</span><span>{{ "%.2f"|format(preview.electricity_cost) }} {{ _('rub') }}</span></div>
         <div class="cost-row"><span>{{ _('depreciation') }} ({{ "%.1f"|format(preview.print_time) }} {{ _('hours') }}):</span><span>{{ "%.2f"|format(preview.depreciation_cost) }} {{ _('rub') }}</span></div>
         <div class="cost-row"><span>{{ _('base_rate') }}:</span><span>{{ "%.2f"|format(preview.base_rate) }} {{ _('rub') }}</span></div>
@@ -87,4 +89,26 @@
     {% if not filaments %}<a href="{{ url_for('filaments') }}" class="btn btn-small">{{ _('add_filament') }}</a>{% endif %}
 </div>
 {% endif %}
+
+<style>
+.filament-row { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.4rem; }
+.filament-row select { flex:2; padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem; }
+.filament-row input { flex:1; padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem; min-width:80px; }
+.add-filament-btn { width:32px; height:32px; padding:0; border:1px solid var(--border); border-radius:8px; background:var(--glass-bg); color:var(--text); cursor:pointer; font-size:1.1rem; flex-shrink:0; }
+.remove-filament-btn { width:32px; height:32px; padding:0; border:none; border-radius:8px; background:var(--danger); color:#fff; cursor:pointer; font-size:1rem; flex-shrink:0; }
+</style>
+
+<script>
+function addFilamentRow() {
+    var container = document.getElementById('filament-rows');
+    var row = document.createElement('div');
+    row.className = 'filament-row';
+    row.innerHTML = '<select name="filament_id" required>' +
+        container.querySelector('select').innerHTML +
+        '</select>' +
+        '<input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>' +
+        '<button type="button" class="remove-filament-btn" onclick="this.parentElement.remove()">−</button>';
+    container.appendChild(row);
+}
+</script>
 {% endblock %}

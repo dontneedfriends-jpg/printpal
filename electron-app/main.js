@@ -55,18 +55,42 @@ ipcMain.on("win-maximize", () => {
 ipcMain.on("win-close", () => mainWindow && mainWindow.close());
 
 function findPython() {
-  const candidates = ["python", "python3", "py"];
   const localAppData = process.env.LOCALAPPDATA || "";
   const progFiles = process.env.ProgramFiles || "C:\\Program Files";
-  for (const ver of ["Python314", "Python313", "Python312", "Python311", "Python310"]) {
-    candidates.push(path.join(localAppData, "Programs", ver, "python.exe"));
-    candidates.push(path.join(progFiles, ver, "python.exe"));
-    candidates.push(`C:\\${ver}\\python.exe`);
-  }
+
+  // Prefer known-good paths first
+  const candidates = [
+    path.join(localAppData, "Programs", "Python", "Python314", "python.exe"),
+    path.join(localAppData, "Programs", "Python", "Python313", "python.exe"),
+    path.join(localAppData, "Programs", "Python", "Python312", "python.exe"),
+    path.join(localAppData, "Programs", "Python", "Python311", "python.exe"),
+    path.join(localAppData, "Programs", "Python", "Python310", "python.exe"),
+    path.join(progFiles, "Python314", "python.exe"),
+    path.join(progFiles, "Python313", "python.exe"),
+    path.join(progFiles, "Python312", "python.exe"),
+    path.join(progFiles, "Python311", "python.exe"),
+    path.join(progFiles, "Python310", "python.exe"),
+    `C:\\Python314\\python.exe`,
+    `C:\\Python313\\python.exe`,
+    `C:\\Python312\\python.exe`,
+    `C:\\Python311\\python.exe`,
+    `C:\\Python310\\python.exe`,
+    "py",
+    "python3",
+    "python",
+  ];
+
   for (const cmd of candidates) {
     try {
       execSync(`"${cmd}" --version`, { stdio: "pipe", timeout: 2000 });
-      return cmd;
+      // Check if Flask is available
+      try {
+        execSync(`"${cmd}" -c "import flask"`, { stdio: "pipe", timeout: 3000 });
+        return cmd;
+      } catch (e) {
+        // No Flask yet, will install later — still return this Python
+        return cmd;
+      }
     } catch (e) {}
   }
   return null;
