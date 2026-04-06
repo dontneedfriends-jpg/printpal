@@ -1,6 +1,11 @@
 import sqlite3
 import os
+import logging
 from config import DATABASE
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -84,8 +89,8 @@ def init_db():
             conn.execute("ALTER TABLE printers ADD COLUMN maintenance_hours REAL DEFAULT 0")
         if "camera_ip" not in columns:
             conn.execute("ALTER TABLE printers ADD COLUMN camera_ip TEXT DEFAULT ''")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Migration printers columns: {e}")
 
     try:
         columns = [row["name"] for row in conn.execute("PRAGMA table_info(calculations)").fetchall()]
@@ -93,8 +98,8 @@ def init_db():
             conn.execute("ALTER TABLE calculations ADD COLUMN model_file TEXT")
         if "model_orig_name" not in columns:
             conn.execute("ALTER TABLE calculations ADD COLUMN model_orig_name TEXT DEFAULT ''")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Migration calculations columns: {e}")
 
     conn.commit()
     conn.close()

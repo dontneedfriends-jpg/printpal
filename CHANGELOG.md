@@ -1,5 +1,23 @@
 # PrintPAL Changelog
 
+## v1.1.0 — 2026-04-06
+
+### Bug Fixes
+
+- **History delete** — fixed deletion not working; now uses modal confirmation dialog (like filaments)
+- **Calculator persistence** — filament selection and weights now preserved after preview
+- **CSS typo** — fixed `--text-muted: #6868888` → `#686888`
+
+### Security Improvements
+
+- Secret key generated dynamically via `secrets.token_hex(32)` (no hardcoded key)
+- Path traversal protection in file downloads via `safe_filename()`
+- Input validation helpers (`safe_float()`, `safe_int()`) with sensible defaults
+- Division by zero protection in cost calculations
+- Database migration errors now logged instead of silently ignored
+
+---
+
 ## v1.0.0 — 2026-04-04
 
 ### Features

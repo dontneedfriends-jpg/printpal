@@ -16,6 +16,19 @@
         <div class="form-group" style="grid-column: 1 / -1;">
             <label>{{ _('filament') }}</label>
             <div id="filament-rows">
+                {% if preview and preview.filament_costs %}
+                    {% for fc in preview.filament_costs %}
+                    <div class="filament-row">
+                        <select name="filament_id" required>
+                            {% for f in filaments %}
+                            <option value="{{ f.id }}" {% if fc.id == f.id %}selected{% endif %}>{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }})</option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required value="{{ "%.1f"|format(fc.weight) }}">
+                        <button type="button" class="add-filament-btn" onclick="addFilamentRow()" title="Добавить">+</button>
+                    </div>
+                    {% endfor %}
+                {% else %}
                 <div class="filament-row">
                     <select name="filament_id" required>
                         {% for f in filaments %}
@@ -25,6 +38,7 @@
                     <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>
                     <button type="button" class="add-filament-btn" onclick="addFilamentRow()" title="Добавить">+</button>
                 </div>
+                {% endif %}
             </div>
         </div>
         <div class="form-group">
@@ -101,10 +115,11 @@
 <script>
 function addFilamentRow() {
     var container = document.getElementById('filament-rows');
+    var template = container.querySelector('.filament-row');
     var row = document.createElement('div');
     row.className = 'filament-row';
     row.innerHTML = '<select name="filament_id" required>' +
-        container.querySelector('select').innerHTML +
+        template.querySelector('select').innerHTML +
         '</select>' +
         '<input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>' +
         '<button type="button" class="remove-filament-btn" onclick="this.parentElement.remove()">−</button>';

@@ -1,16 +1,60 @@
 import os
+import re
 import uuid
 import csv
 import io
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, Response, make_response
+import secrets
+import logging
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, Response, make_response, abort
 from database import get_db, init_db, get_settings
 from config import DEFAULT_ELECTRICITY_RATE, DEFAULT_BASE_RATE, DEFAULT_MARKUP_PERCENT, UPLOAD_DIR
 from translations import t as _t
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-app.secret_key = "filament-calculator-secret-key"
+app.secret_key = secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 31536000
+
+ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "gcode", "step", "stp", "amf"}
+
+
+def safe_filename(filename):
+    filename = os.path.basename(filename)
+    filename = re.sub(r"[^\w\-.]", "_", filename)
+    return filename
+
+
+def safe_float(value, default=0.0):
+    try:
+        result = float(value)
+        if result < 0:
+            return default
+        return result
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_int(value, default=0):
+    try:
+        result = int(value)
+        if result < 0:
+            return default
+        return result
+    except (TypeError, ValueError):
+        return default
+
+
+def validate_filament_id(fid):
+    try:
+        fid_int = int(fid)
+        if fid_int < 1:
+            return None
+        return fid_int
+    except (TypeError, ValueError):
+        return None
 
 
 @app.context_processor
@@ -18,8 +62,6 @@ def inject_translations():
     def _(key):
         return _t(request.cookies.get("lang", "ru"), key)
     return {"_": _}
-
-ALLOWED_EXTENSIONS = {"stl", "obj", "3mf", "gcode", "step", "stp", "amf"}
 
 
 def allowed_file(filename):
@@ -47,7 +89,11 @@ def before_request():
 
 def calc_cost(printer, filament, weight_g, print_time, base_rate, markup_pct):
     electricity_rate = get_setting("electricity_rate")
-    price_per_gram = filament["spool_price"] / filament["spool_weight_g"]
+    spool_weight = filament["spool_weight_g"]
+    if spool_weight <= 0:
+        logger.warning(f"Invalid spool_weight_g for filament id={filament['id']}, using default 1")
+        spool_weight = 1.0
+    price_per_gram = filament["spool_price"] / spool_weight
     filament_cost = weight_g * price_per_gram
     electricity_cost = print_time * (printer["power_watts"] / 1000) * electricity_rate
     depreciation_cost = print_time * printer["depreciation_per_hour"]
@@ -79,7 +125,7 @@ def save_uploaded_file(file):
 @app.route("/")
 def index():
     db = get_db()
-    filaments = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
+    filaments = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
     printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
     today_count = db.execute("SELECT COUNT(*) as cnt FROM calculations WHERE date(created_at) = date('now')").fetchone()["cnt"]
 
@@ -117,7 +163,7 @@ def add_printer():
     db = get_db()
     db.execute(
         "INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip) VALUES (?, ?, ?, ?, ?, ?)",
-        (request.form["name"], float(request.form["power_watts"]), float(request.form["purchase_price"]), float(request.form["depreciation_per_hour"]), request.form.get("ip_address", ""), request.form.get("camera_ip", ""))
+        (request.form["name"], safe_float(request.form["power_watts"], 200), safe_float(request.form["purchase_price"]), safe_float(request.form["depreciation_per_hour"]), request.form.get("ip_address", ""), request.form.get("camera_ip", ""))
     )
     db.commit()
     db.close()
@@ -131,7 +177,7 @@ def edit_printer(id):
     db = get_db()
     db.execute(
         "UPDATE printers SET name=?, power_watts=?, purchase_price=?, depreciation_per_hour=?, ip_address=?, camera_ip=? WHERE id=?",
-        (request.form["name"], float(request.form["power_watts"]), float(request.form["purchase_price"]), float(request.form["depreciation_per_hour"]), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), id)
+        (request.form["name"], safe_float(request.form["power_watts"], 200), safe_float(request.form["purchase_price"]), safe_float(request.form["depreciation_per_hour"]), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), id)
     )
     db.commit()
     db.close()
@@ -160,7 +206,7 @@ def printers_monitor():
 @app.route("/filaments")
 def filaments():
     db = get_db()
-    filament_list = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
+    filament_list = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
     db.close()
     return render_template("filaments.html", filaments=filament_list, lang=request.lang)
 
@@ -168,10 +214,10 @@ def filaments():
 @app.route("/filaments/add", methods=["POST"])
 def add_filament():
     db = get_db()
-    weight = float(request.form["spool_weight_g"])
+    weight = safe_float(request.form["spool_weight_g"], 1000)
     db.execute(
         "INSERT INTO filaments (name, filament_type, color, spool_weight_g, spool_price, remaining_g) VALUES (?, ?, ?, ?, ?, ?)",
-        (request.form["name"], request.form["filament_type"], request.form["color"], weight, float(request.form["spool_price"]), weight)
+        (request.form["name"], request.form["filament_type"], request.form["color"], weight, safe_float(request.form["spool_price"]), weight)
     )
     db.commit()
     db.close()
@@ -183,7 +229,7 @@ def edit_filament(id):
     db = get_db()
     db.execute(
         "UPDATE filaments SET name=?, filament_type=?, color=?, spool_weight_g=?, spool_price=? WHERE id=?",
-        (request.form["name"], request.form["filament_type"], request.form["color"], float(request.form["spool_weight_g"]), float(request.form["spool_price"]), id)
+        (request.form["name"], request.form["filament_type"], request.form["color"], safe_float(request.form["spool_weight_g"], 1000), safe_float(request.form["spool_price"]), id)
     )
     db.commit()
     db.close()
@@ -193,7 +239,7 @@ def edit_filament(id):
 @app.route("/filaments/<int:id>/adjust", methods=["POST"])
 def adjust_filament(id):
     db = get_db()
-    db.execute("UPDATE filaments SET remaining_g = ? WHERE id = ?", (float(request.form["remaining_g"]), id))
+    db.execute("UPDATE filaments SET remaining_g = ? WHERE id = ?", (safe_float(request.form["remaining_g"]), id))
     db.commit()
     db.close()
     return "ok", 200
@@ -255,7 +301,7 @@ def import_filaments():
 def calculator():
     db = get_db()
     all_printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
-    all_filaments = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
+    all_filaments = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
     db.close()
     return render_template(
         "calculator.html",
@@ -272,9 +318,9 @@ def calculator():
 def preview_cost():
     db = get_db()
     printer = db.execute("SELECT * FROM printers WHERE id = ?", (request.form["printer_id"],)).fetchone()
-    print_time = float(request.form["print_time_hours"])
-    base_rate = float(request.form.get("base_rate", DEFAULT_BASE_RATE))
-    markup_pct = float(request.form.get("markup_percent", DEFAULT_MARKUP_PERCENT))
+    print_time = safe_float(request.form["print_time_hours"], 1)
+    base_rate = safe_float(request.form.get("base_rate", DEFAULT_BASE_RATE), DEFAULT_BASE_RATE)
+    markup_pct = safe_float(request.form.get("markup_percent", DEFAULT_MARKUP_PERCENT), DEFAULT_MARKUP_PERCENT)
 
     filament_ids = request.form.getlist("filament_id")
     filament_weights = request.form.getlist("filament_weight")
@@ -282,8 +328,8 @@ def preview_cost():
     filament_costs_list = []
     total_filament_cost = 0
     for fid, fweight in zip(filament_ids, filament_weights):
-        f = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
-        w = float(fweight)
+        f = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
+        w = safe_float(fweight, 0)
         cost = w * f["price_per_g"]
         total_weight += w
         total_filament_cost += cost
@@ -303,7 +349,7 @@ def preview_cost():
             tmp_file, tmp_orig_name = save_uploaded_file(file)
 
     all_printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
-    all_filaments = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments ORDER BY name").fetchall()
+    all_filaments = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
     db.close()
 
     electricity_cost = print_time * (printer["power_watts"] / 1000) * get_setting("electricity_rate")
@@ -342,17 +388,17 @@ def preview_cost():
 def save_calculation():
     db = get_db()
     printer = db.execute("SELECT * FROM printers WHERE id = ?", (request.form["printer_id"],)).fetchone()
-    print_time = float(request.form["print_time_hours"])
-    base_rate = float(request.form["base_rate"])
-    markup_pct = float(request.form["markup_percent"])
+    print_time = safe_float(request.form["print_time_hours"], 1)
+    base_rate = safe_float(request.form["base_rate"], DEFAULT_BASE_RATE)
+    markup_pct = safe_float(request.form["markup_percent"], DEFAULT_MARKUP_PERCENT)
 
     filament_ids = request.form.getlist("filament_id")
     filament_weights = request.form.getlist("filament_weight")
     total_weight = 0
     total_filament_cost = 0
     for fid, fweight in zip(filament_ids, filament_weights):
-        f = db.execute("SELECT *, (spool_price / spool_weight_g) as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
-        w = float(fweight)
+        f = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
+        w = safe_float(fweight, 0)
         total_weight += w
         total_filament_cost += w * f["price_per_g"]
 
@@ -378,7 +424,7 @@ def save_calculation():
         (printer["id"], first_fid, request.form["model_name"], total_weight, print_time, base_rate, total_filament_cost, electricity_cost, depreciation_cost, markup_pct, markup_amount, total, model_file, model_orig_name)
     )
     for fid, fweight in zip(filament_ids, filament_weights):
-        db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (float(fweight), fid))
+        db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (safe_float(fweight, 0), fid))
     db.commit()
     db.close()
     flash(f"Расчёт сохранён! Итого: {total:.2f} руб.", "success")
@@ -439,12 +485,20 @@ def delete_calculation(id):
     db.execute("DELETE FROM calculations WHERE id = ?", (id,))
     db.commit()
     db.close()
-    return redirect(url_for("history"))
+    return "ok", 200
 
 
 @app.route("/uploads/<filename>")
 def download_file(filename):
-    return send_from_directory(UPLOAD_DIR, filename, as_attachment=True)
+    safe_name = safe_filename(filename)
+    if not safe_name or safe_name.startswith("."):
+        logger.warning(f"Blocked invalid filename: {filename}")
+        abort(400)
+    filepath = os.path.join(UPLOAD_DIR, safe_name)
+    if not os.path.isfile(filepath):
+        logger.warning(f"File not found: {filepath}")
+        abort(404)
+    return send_from_directory(UPLOAD_DIR, safe_name, as_attachment=True)
 
 
 PRESETS = {

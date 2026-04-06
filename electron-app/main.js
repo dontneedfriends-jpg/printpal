@@ -58,7 +58,6 @@ function findPython() {
   const localAppData = process.env.LOCALAPPDATA || "";
   const progFiles = process.env.ProgramFiles || "C:\\Program Files";
 
-  // Prefer known-good paths first
   const candidates = [
     path.join(localAppData, "Programs", "Python", "Python314", "python.exe"),
     path.join(localAppData, "Programs", "Python", "Python313", "python.exe"),
@@ -75,22 +74,24 @@ function findPython() {
     `C:\\Python312\\python.exe`,
     `C:\\Python311\\python.exe`,
     `C:\\Python310\\python.exe`,
-    "py",
-    "python3",
-    "python",
   ];
 
   for (const cmd of candidates) {
     try {
-      execSync(`"${cmd}" --version`, { stdio: "pipe", timeout: 2000 });
-      // Check if Flask is available
+      execSync(cmd + " --version", { stdio: "pipe", timeout: 2000 });
       try {
-        execSync(`"${cmd}" -c "import flask"`, { stdio: "pipe", timeout: 3000 });
+        execSync(cmd + ' -c "import flask"', { stdio: "pipe", timeout: 3000 });
         return cmd;
       } catch (e) {
-        // No Flask yet, will install later — still return this Python
         return cmd;
       }
+    } catch (e) {}
+  }
+  // Fallback to PATH commands
+  for (const cmd of ["py", "python3", "python"]) {
+    try {
+      execSync(cmd + " --version", { stdio: "pipe", timeout: 2000 });
+      return cmd;
     } catch (e) {}
   }
   return null;
@@ -107,11 +108,10 @@ function checkFlask(pythonCmd) {
 
 function installFlask(pythonCmd, cwd) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(`"${pythonCmd}"`, ["-m", "pip", "install", "--quiet", "flask"], {
+    const proc = spawn(pythonCmd, ["-m", "pip", "install", "--quiet", "flask"], {
       cwd: cwd || process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
-      shell: true,
     });
     let output = "";
     proc.stdout.on("data", (d) => { output += d.toString(); });

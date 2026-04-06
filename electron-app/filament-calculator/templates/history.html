@@ -11,7 +11,7 @@
 <div class="card" style="padding:0.5rem;">
     {% if calculations %}
     {% for c in calculations %}
-    <div class="hist-row" data-search="{{ c.model_name|lower }} {{ c.printer_name|lower }} {{ c.filament_name|lower }} {{ c.filament_color|lower }}">
+    <div class="hist-row" data-id="{{ c.id }}" data-search="{{ c.model_name|lower }} {{ c.printer_name|lower }} {{ c.filament_name|lower }} {{ c.filament_color|lower }}">
         <div class="hist-main">
             <div class="hist-info">
                 <div class="hist-date">{{ c.created_at[:10] }}</div>
@@ -30,7 +30,7 @@
                 <span class="hist-cost-sub">{{ "%.2f"|format(c.filament_cost) }} + {{ "%.2f"|format(c.electricity_cost) }} + {{ "%.2f"|format(c.depreciation_cost) }}</span>
                 <span class="hist-cost-total">{{ "%.2f"|format(c.total_cost) }} ₽</span>
             </div>
-            <button class="btn btn-danger btn-small" onclick="deleteCalc({{ c.id }})">✕</button>
+            <button class="btn btn-danger btn-small" onclick="deleteCalc(this, {{ c.id }})">✕</button>
         </div>
     </div>
     {% endfor %}
@@ -47,19 +47,26 @@ function filterHistory() {
     });
 }
 
-function deleteCalc(id) {
+function deleteCalc(btn, id) {
     appConfirm('{{ _('confirm_delete') }}').then(function(ok) {
         if (!ok) return;
-        var fd = new FormData();
-        fetch('/history/' + id + '/delete', { method: 'POST', body: fd })
-        .then(function() {
-            var rows = document.querySelectorAll('.hist-row');
-            rows.forEach(function(r) {
-                if (r.querySelector('button[onclick*="' + id + '"]')) r.remove();
+        var row = btn.closest('.hist-row');
+        fetch('/history/' + id + '/delete', {method: 'POST'})
+            .then(function() { 
+                if (row) row.remove();
+                showToast('{{ _('deleted') }}', 'success');
             });
-            showToast('{{ _('deleted') }}', 'success');
-        });
     });
 }
 </script>
+
+<style>
+.modal-overlay { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.modal-box { background:var(--bg-card); border:1px solid var(--glass-border); border-radius:16px; padding:1.5rem; width:90%; max-width:450px; box-shadow:0 16px 48px rgba(0,0,0,0.3); animation:modalIn 0.2s ease-out; }
+.modal-confirm { max-width:350px; text-align:center; }
+@keyframes modalIn { from{transform:scale(0.95);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+.modal-header h3 { margin:0; }
+.modal-actions { display:flex; justify-content:center; gap:0.75rem; margin-top:1.25rem; }
+</style>
 {% endblock %}

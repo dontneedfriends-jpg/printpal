@@ -4,6 +4,8 @@
 
 **EN** — Filament tracker and 3D print cost calculator.
 
+> **Version 1.1.0** — см. [Changelog](CHANGELOG.md)
+
 <img width="1280" height="1032" alt="dash" src="https://github.com/user-attachments/assets/7c37d0d5-5c94-441d-86ca-4ccbd872c8c2" />
 
 
@@ -97,7 +99,7 @@ npm start
 npm run build:win
 ```
 
-Результат: `dist/PrintPAL.exe` — портативный файл, ~75 МБ.
+Результат: `dist5/PrintPAL.exe` — портативный файл, ~180 МБ.
 
 ### Linux
 
@@ -107,11 +109,11 @@ npm install
 npx electron-builder --linux
 ```
 
-Результат: `dist/printpal-1.0.0.tar.gz` — архив, ~98 МБ.
+Результат: `dist/printpal-1.1.0.tar.gz` — архив, ~98 МБ.
 
 Запуск:
 ```bash
-tar -xzf printpal-1.0.0.tar.gz
+tar -xzf printpal-1.1.0.tar.gz
 cd PrintPAL
 ./PrintPAL
 ```
@@ -126,7 +128,7 @@ npm install
 npx electron-builder --mac
 ```
 
-Результат: `dist/PrintPAL-1.0.0.dmg`
+Результат: `dist/PrintPAL-1.1.0.dmg`
 
 ---
 
