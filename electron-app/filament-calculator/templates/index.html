@@ -43,7 +43,11 @@
     <div class="filament-card {{ 'low' if f.remaining_g < 200 else 'medium' if f.remaining_g < 500 else 'ok' }}">
         <div class="filament-header">
             <span class="filament-name">{{ f.name }}</span>
+            {% if f.color_hex %}
+            <span class="filament-color-dot" style="background:#{{ f.color_hex }};"></span>
+            {% else %}
             <span class="filament-color">{{ f.color }}</span>
+            {% endif %}
         </div>
         <div class="filament-type">{{ f.filament_type }}</div>
         <div class="filament-remaining">
@@ -88,5 +92,6 @@
 .maint-card.maint-warn .maint-fill { background: var(--warning-accent); }
 .maint-card.maint-crit .maint-fill { background: var(--low-accent); }
 .maint-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; }
+.filament-color-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--glass-border); flex-shrink: 0; }
 </style>
 {% endblock %}

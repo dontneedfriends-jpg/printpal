@@ -520,6 +520,38 @@ body::before {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
+.nav-dropdown {
+    position: relative;
+}
+
+.nav-dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--bg-navbar);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    min-width: 180px;
+    z-index: 1000;
+    padding: 0.5rem 0;
+}
+
+.nav-dropdown:hover .nav-dropdown-content {
+    display: block;
+}
+
+.nav-dropdown-content a {
+    display: block;
+    padding: 0.5rem 1rem;
+    color: var(--text-navbar);
+    font-size: 0.85rem;
+}
+
+.nav-dropdown-content a:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
 .theme-toggle {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);

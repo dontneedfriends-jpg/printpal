@@ -17,7 +17,7 @@
     "appId": "com.printpal.app",
     "productName": "PrintPAL",
     "directories": {
-      "output": "dist5"
+      "output": "dist6"
     },
     "files": [
       "main.js",

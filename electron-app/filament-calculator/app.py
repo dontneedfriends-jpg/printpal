@@ -3,10 +3,12 @@ import re
 import uuid
 import csv
 import io
+import json
 import secrets
 import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, Response, make_response, abort
-from database import get_db, init_db, get_settings
+import urllib.request
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, Response, make_response, abort, jsonify
+from database import get_db, init_db, get_settings, init_shpoolken_db, is_shpoolken_loaded, get_shpoolken_filaments, get_shpoolken_manufacturers, get_shpoolken_materials, get_shpoolken_stats, insert_shpoolken_filaments
 from config import DEFAULT_ELECTRICITY_RATE, DEFAULT_BASE_RATE, DEFAULT_MARKUP_PERCENT, UPLOAD_DIR
 from translations import t as _t
 
@@ -61,7 +63,12 @@ def validate_filament_id(fid):
 def inject_translations():
     def _(key):
         return _t(request.cookies.get("lang", "ru"), key)
-    return {"_": _}
+    def from_json(s):
+        try:
+            return json.loads(s) if s else []
+        except:
+            return []
+    return {"_": _, "from_json": from_json}
 
 
 def allowed_file(filename):
@@ -259,7 +266,6 @@ def export_filaments():
     db = get_db()
     filaments = db.execute("SELECT name, filament_type, color, spool_weight_g, spool_price, remaining_g FROM filaments ORDER BY name").fetchall()
     db.close()
-    import json
     data = [dict(f) for f in filaments]
     return Response(json.dumps(data, indent=2, ensure_ascii=False), mimetype="application/json",
                     headers={"Content-Disposition": "attachment;filename=filaments.json"})
@@ -271,7 +277,6 @@ def import_filaments():
     if not file or not file.filename:
         flash("Файл не выбран", "error")
         return redirect(url_for("filaments"))
-    import json
     try:
         data = json.load(file.stream)
     except Exception:
@@ -396,11 +401,14 @@ def save_calculation():
     filament_weights = request.form.getlist("filament_weight")
     total_weight = 0
     total_filament_cost = 0
+    filament_data = []
+    
     for fid, fweight in zip(filament_ids, filament_weights):
         f = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments WHERE id = ?", (fid,)).fetchone()
         w = safe_float(fweight, 0)
         total_weight += w
         total_filament_cost += w * f["price_per_g"]
+        filament_data.append({"id": fid, "name": f["name"], "weight": w, "cost": w * f["price_per_g"]})
 
     electricity_cost = print_time * (printer["power_watts"] / 1000) * get_setting("electricity_rate")
     depreciation_cost = print_time * printer["depreciation_per_hour"]
@@ -419,10 +427,19 @@ def save_calculation():
                 model_orig_name = orig_name
 
     first_fid = filament_ids[0] if filament_ids else 1
-    db.execute(
-        "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, markup_percent, markup_amount, total_cost, model_file, model_orig_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (printer["id"], first_fid, request.form["model_name"], total_weight, print_time, base_rate, total_filament_cost, electricity_cost, depreciation_cost, markup_pct, markup_amount, total, model_file, model_orig_name)
-    )
+    filament_data_json = json.dumps(filament_data, ensure_ascii=False)
+    
+    try:
+        db.execute(
+            "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, markup_percent, markup_amount, total_cost, model_file, model_orig_name, filament_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (printer["id"], first_fid, request.form["model_name"], total_weight, print_time, base_rate, total_filament_cost, electricity_cost, depreciation_cost, markup_pct, markup_amount, total, model_file, model_orig_name, filament_data_json)
+        )
+    except Exception as e:
+        logger.error(f"Insert with filament_data failed: {e}")
+        db.execute(
+            "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, markup_percent, markup_amount, total_cost, model_file, model_orig_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (printer["id"], first_fid, request.form["model_name"], total_weight, print_time, base_rate, total_filament_cost, electricity_cost, depreciation_cost, markup_pct, markup_amount, total, model_file, model_orig_name)
+        )
     for fid, fweight in zip(filament_ids, filament_weights):
         db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (safe_float(fweight, 0), fid))
     db.commit()
@@ -477,13 +494,21 @@ def history():
 @app.route("/history/<int:id>/delete", methods=["POST"])
 def delete_calculation(id):
     db = get_db()
-    row = db.execute("SELECT model_file FROM calculations WHERE id = ?", (id,)).fetchone()
-    if row and row["model_file"]:
-        fpath = os.path.join(UPLOAD_DIR, row["model_file"])
-        if os.path.exists(fpath):
-            os.remove(fpath)
-    db.execute("DELETE FROM calculations WHERE id = ?", (id,))
-    db.commit()
+    row = db.execute("SELECT model_file, filament_data FROM calculations WHERE id = ?", (id,)).fetchone()
+    if row:
+        if row["model_file"]:
+            fpath = os.path.join(UPLOAD_DIR, row["model_file"])
+            if os.path.exists(fpath):
+                os.remove(fpath)
+        if row["filament_data"]:
+            try:
+                filament_data = json.loads(row["filament_data"])
+                for f in filament_data:
+                    db.execute("UPDATE filaments SET remaining_g = remaining_g + ? WHERE id = ?", (f["weight"], f["id"]))
+            except Exception as e:
+                logger.warning(f"Failed to restore filament data: {e}")
+        db.execute("DELETE FROM calculations WHERE id = ?", (id,))
+        db.commit()
     db.close()
     return "ok", 200
 
@@ -1167,6 +1192,132 @@ def export_history():
     output.seek(0)
     return Response(output.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": "attachment;filename=printpal_history.csv"})
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html", lang=request.lang)
+
+
+SHPOLKEN_GITHUB = "https://raw.githubusercontent.com/dontneedfriends-jpg/ShpoolkenDB/main/filaments"
+
+
+def check_internet():
+    try:
+        req = urllib.request.Request("https://www.google.com/favicon.ico")
+        req.add_header("User-Agent", "Mozilla/5.0")
+        urllib.request.urlopen(req, timeout=5)
+        return True
+    except Exception:
+        return False
+
+
+@app.route("/shpoolken")
+def shpoolken():
+    init_shpoolken_db()
+    has_internet = check_internet()
+    loaded = is_shpoolken_loaded()
+    manufacturers = get_shpoolken_manufacturers() if loaded else []
+    materials = get_shpoolken_materials() if loaded else []
+    stats = get_shpoolken_stats() if loaded else {}
+    return render_template(
+        "shpoolken.html",
+        loaded=loaded,
+        has_internet=has_internet,
+        manufacturers=manufacturers,
+        materials=materials,
+        stats=stats,
+        lang=request.lang,
+    )
+
+
+@app.route("/shpoolken/sync", methods=["POST"])
+def shpoolken_sync():
+    init_shpoolken_db()
+    
+    if not check_internet():
+        return jsonify({"success": False, "error": "no_internet"})
+    
+    try:
+        filaments_data = []
+        
+        req = urllib.request.Request("https://api.github.com/repos/dontneedfriends-jpg/ShpoolkenDB/contents/filaments")
+        req.add_header("User-Agent", "Mozilla/5.0")
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            files = json.loads(resp.read().decode())
+        
+        total = len([f for f in files if f["name"].endswith(".json")])
+        
+        for i, f in enumerate(files):
+            if not f["name"].endswith(".json"):
+                continue
+            
+            try:
+                req = urllib.request.Request(f["download_url"])
+                req.add_header("User-Agent", "Mozilla/5.0")
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode())
+                    filaments_data.append(data)
+            except Exception as e:
+                logger.warning(f"Failed to download {f['name']}: {e}")
+        
+        insert_shpoolken_filaments(filaments_data)
+        
+        return jsonify({
+            "success": True,
+            "stats": get_shpoolken_stats()
+        })
+    except Exception as e:
+        logger.error(f"Shpoolken sync error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/shpoolken/search")
+def shpoolken_search():
+    if not is_shpoolken_loaded():
+        return jsonify([])
+    
+    q = request.args.get("q", "")
+    manufacturer = request.args.get("manufacturer", "")
+    material = request.args.get("material", "")
+    
+    results = get_shpoolken_filaments(
+        manufacturer=manufacturer if manufacturer else None,
+        material=material if material else None,
+        search=q if q else None,
+        limit=100
+    )
+    
+    return jsonify([dict(r) for r in results])
+
+
+@app.route("/shpoolken/add", methods=["POST"])
+def shpoolken_add():
+    db = get_db()
+    
+    manufacturer = request.form.get("manufacturer", "")
+    name = request.form.get("name", "")
+    material = request.form.get("material", "")
+    color = request.form.get("color", "")
+    color_hex = request.form.get("color_hex", "")
+    density = safe_float(request.form.get("density"))
+    diameter = safe_float(request.form.get("diameter"), 1.75)
+    weight = safe_float(request.form.get("weight"), 1000)
+    spool_price = safe_float(request.form.get("spool_price"))
+    
+    full_name = f"{manufacturer} {name}" if manufacturer else name
+    if color:
+        full_name = f"{full_name} {color}"
+    
+    db.execute("""
+        INSERT INTO filaments (name, filament_type, color, color_hex, spool_weight_g, spool_price, remaining_g, density, diameter)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (full_name, material, color, color_hex, weight, spool_price, weight, density or 0, diameter or 1.75))
+    db.commit()
+    db.close()
+    
+    flash("Филамент добавлен!", "success")
+    return redirect(url_for("filaments"))
 
 
 if __name__ == "__main__":

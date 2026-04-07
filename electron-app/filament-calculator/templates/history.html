@@ -11,7 +11,7 @@
 <div class="card" style="padding:0.5rem;">
     {% if calculations %}
     {% for c in calculations %}
-    <div class="hist-row" data-id="{{ c.id }}" data-search="{{ c.model_name|lower }} {{ c.printer_name|lower }} {{ c.filament_name|lower }} {{ c.filament_color|lower }}">
+    <div class="hist-row" data-id="{{ c.id }}" data-search="{{ c.model_name|lower }} {{ c.printer_name|lower }}">
         <div class="hist-main">
             <div class="hist-info">
                 <div class="hist-date">{{ c.created_at[:10] }}</div>
@@ -19,7 +19,14 @@
             </div>
             <div class="hist-details">
                 <span class="hist-tag">{{ c.printer_name }}</span>
+                {% if c.filament_data %}
+                    {% set filaments = c.filament_data|from_json %}
+                    {% for f in filaments %}
+                    <span class="hist-tag hist-filament">{{ f.name }} ({{ "%.0f"|format(f.weight) }}г)</span>
+                    {% endfor %}
+                {% else %}
                 <span class="hist-tag">{{ c.filament_name }} {{ c.filament_color }}</span>
+                {% endif %}
                 <span class="hist-tag">{{ "%.0f"|format(c.weight_g) }}г</span>
                 <span class="hist-tag">{{ "%.1f"|format(c.print_time_hours) }}ч</span>
                 {% if c.model_file %}

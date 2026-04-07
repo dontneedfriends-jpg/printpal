@@ -1,5 +1,34 @@
 # PrintPAL Changelog
 
+## v1.1.1 — 2026-04-07
+
+### Features
+
+- **ShpoolkenDB Integration** — Online filament catalog with card-based UI and large color blocks
+  - Sync from GitHub repository
+  - Filter by manufacturer and material
+  - One-click add to local filaments
+  - `{color_name}` placeholder filtered at insert time
+- **Color Picker** — HTML5 color picker in filament add/edit modal
+- **Color Circles** — Color dots shown on Dashboard, filaments page, and history
+- **About Page** — New navbar tab with donate links (CloudTips, Boosty)
+- **Multi-filament History** — All filaments shown in history (not just first one)
+
+### Bug Fixes
+
+- **History Delete** — Deleting calculation now restores filament weights back
+- **ShpoolkenDB Display** — `{color_name}` filtered from names and colors
+- **Calculator Error** — Added fallback for old databases without `filament_data` column
+- **History Display** — Fixed showing only first filament
+
+### Technical
+
+- `calculations` table now has `filament_data` JSON column storing all filaments used
+- `from_json()` Jinja filter added to context processor
+- `filament_data` migration with fallback for old databases
+
+---
+
 ## v1.1.0 — 2026-04-06
 
 ### Bug Fixes
@@ -47,5 +76,5 @@
 
 ### Platforms
 
-- **Windows**: `dist5/PrintPAL.exe` — portable, ~71 MB
-- **Linux**: `dist5/printpal-1.0.0.tar.gz` — archive, ~98 MB
+- **Windows**: portable exe, ~71 MB
+- **Linux**: archive, ~98 MB

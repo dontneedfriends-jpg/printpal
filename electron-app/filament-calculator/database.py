@@ -98,8 +98,21 @@ def init_db():
             conn.execute("ALTER TABLE calculations ADD COLUMN model_file TEXT")
         if "model_orig_name" not in columns:
             conn.execute("ALTER TABLE calculations ADD COLUMN model_orig_name TEXT DEFAULT ''")
+        if "filament_data" not in columns:
+            conn.execute("ALTER TABLE calculations ADD COLUMN filament_data TEXT DEFAULT ''")
     except Exception as e:
         logger.warning(f"Migration calculations columns: {e}")
+
+    try:
+        columns = [row["name"] for row in conn.execute("PRAGMA table_info(filaments)").fetchall()]
+        if "density" not in columns:
+            conn.execute("ALTER TABLE filaments ADD COLUMN density REAL DEFAULT 0")
+        if "diameter" not in columns:
+            conn.execute("ALTER TABLE filaments ADD COLUMN diameter REAL DEFAULT 1.75")
+        if "color_hex" not in columns:
+            conn.execute("ALTER TABLE filaments ADD COLUMN color_hex TEXT DEFAULT ''")
+    except Exception as e:
+        logger.warning(f"Migration filaments columns: {e}")
 
     conn.commit()
     conn.close()
@@ -111,3 +124,180 @@ def get_settings():
     settings = {row["key"]: row["value"] for row in rows}
     db.close()
     return settings
+
+
+def get_shpoolken_db():
+    db_path = os.path.join(os.path.dirname(DATABASE), "shpoolken.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
+
+
+def init_shpoolken_db():
+    conn = get_shpoolken_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS filaments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            manufacturer TEXT NOT NULL,
+            name TEXT NOT NULL,
+            material TEXT NOT NULL,
+            color_name TEXT,
+            color_hex TEXT,
+            density REAL,
+            diameter REAL,
+            weight INTEGER,
+            spool_weight INTEGER,
+            extruder_temp INTEGER,
+            bed_temp INTEGER,
+            finish TEXT,
+            pattern TEXT,
+            glow INTEGER DEFAULT 0,
+            translucent INTEGER DEFAULT 0
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sync_info (
+            id INTEGER PRIMARY KEY,
+            last_sync TEXT,
+            file_count INTEGER
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_spoolken_manufacturer ON filaments(manufacturer)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_spoolken_material ON filaments(material)")
+    conn.commit()
+    conn.close()
+
+
+def is_shpoolken_loaded():
+    conn = get_shpoolken_db()
+    count = conn.execute("SELECT COUNT(*) as c FROM filaments").fetchone()
+    conn.close()
+    return count and count["c"] > 0
+
+
+def clear_shpoolken_db():
+    conn = get_shpoolken_db()
+    conn.execute("DELETE FROM filaments")
+    conn.execute("DELETE FROM sync_info")
+    conn.commit()
+    conn.close()
+
+
+def insert_shpoolken_filaments(filaments_data):
+    conn = get_shpoolken_db()
+    clear_shpoolken_db()
+    
+    for item in filaments_data:
+        manufacturer = item.get("manufacturer", "")
+        for filament in item.get("filaments", []):
+            name = filament.get("name", "") or ""
+            if name == "{color_name}":
+                name = ""
+            material = filament.get("material", "")
+            density = filament.get("density")
+            extruder_temp = filament.get("extruder_temp")
+            bed_temp = filament.get("bed_temp")
+            finish = filament.get("finish")
+            pattern = filament.get("pattern")
+            glow = 1 if filament.get("glow") else 0
+            translucent = 1 if filament.get("translucent") else 0
+            
+            diameters = filament.get("diameters", [1.75])
+            weights = filament.get("weights", [{"weight": 1000, "spool_weight": 250}])
+            colors = filament.get("colors", [])
+            
+            if not colors:
+                colors = [{"name": None, "hex": None}]
+            
+            for weight_info in weights:
+                weight = weight_info.get("weight")
+                spool_weight = weight_info.get("spool_weight", 250)
+                
+                for color in colors:
+                    color_name = color.get("name") or ""
+                    if color_name == "{color_name}":
+                        color_name = ""
+                    color_hex = color.get("hex")
+                    
+                    for diameter in diameters:
+                        conn.execute("""
+                            INSERT INTO filaments 
+                            (manufacturer, name, material, color_name, color_hex, density, diameter, weight, spool_weight, extruder_temp, bed_temp, finish, pattern, glow, translucent)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (manufacturer, name, material, color_name, color_hex, density, diameter, weight, spool_weight, extruder_temp, bed_temp, finish, pattern, glow, translucent))
+    
+    conn.execute("DELETE FROM sync_info")
+    conn.execute("INSERT INTO sync_info (id, last_sync, file_count) VALUES (1, datetime('now'), ?)", (len(filaments_data),))
+    conn.commit()
+    conn.close()
+
+
+def get_shpoolken_filaments(manufacturer=None, material=None, search=None, limit=500):
+    conn = get_shpoolken_db()
+    
+    sql = "SELECT * FROM filaments WHERE 1=1"
+    params = []
+    
+    if manufacturer:
+        sql += " AND manufacturer = ?"
+        params.append(manufacturer)
+    
+    if material:
+        sql += " AND material = ?"
+        params.append(material)
+    
+    if search:
+        sql += " AND (manufacturer LIKE ? OR name LIKE ? OR material LIKE ? OR color_name LIKE ?)"
+        pattern = f"%{search}%"
+        params.extend([pattern, pattern, pattern, pattern])
+    
+    sql += " ORDER BY manufacturer, material, color_name LIMIT ?"
+    params.append(limit)
+    
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return rows
+
+
+def get_shpoolken_manufacturers():
+    conn = get_shpoolken_db()
+    rows = conn.execute("""
+        SELECT manufacturer, COUNT(*) as count 
+        FROM filaments 
+        GROUP BY manufacturer 
+        ORDER BY manufacturer
+    """).fetchall()
+    conn.close()
+    return rows
+
+
+def get_shpoolken_materials():
+    conn = get_shpoolken_db()
+    rows = conn.execute("""
+        SELECT DISTINCT material 
+        FROM filaments 
+        ORDER BY material
+    """).fetchall()
+    conn.close()
+    return [r["material"] for r in rows]
+
+
+def get_shpoolken_stats():
+    conn = get_shpoolken_db()
+    stats = conn.execute("""
+        SELECT 
+            COUNT(DISTINCT manufacturer) as manufacturer_count,
+            COUNT(*) as filament_count,
+            COUNT(DISTINCT color_name) as color_count
+        FROM filaments
+    """).fetchone()
+    sync = conn.execute("SELECT last_sync, file_count FROM sync_info ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+    return {
+        "manufacturer_count": stats["manufacturer_count"] if stats else 0,
+        "filament_count": stats["filament_count"] if stats else 0,
+        "color_count": stats["color_count"] if stats else 0,
+        "last_sync": sync["last_sync"] if sync else None,
+        "file_count": sync["file_count"] if sync else 0
+    }

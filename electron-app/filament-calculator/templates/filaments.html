@@ -40,7 +40,12 @@
             <tr id="frow-{{ f.id }}" class="{{ 'row-low' if f.remaining_g < 200 else 'row-medium' if f.remaining_g < 500 }}">
                 <td>{{ f.name }}</td>
                 <td>{{ f.filament_type }}</td>
-                <td>{{ f.color }}</td>
+                <td>
+                    {% if f.color_hex %}
+                    <span class="color-dot" style="background:#{{ f.color_hex }};"></span>
+                    {% endif %}
+                    {{ f.color }}
+                </td>
                 <td>
                     <div class="remaining-cell">
                         <span>{{ "%.0f"|format(f.remaining_g) }} / {{ "%.0f"|format(f.spool_weight_g) }} г</span>
@@ -84,9 +89,13 @@
                     <option value="ASA">ASA</option><option value="PC">PC</option><option value="Другой">Другой</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group color-form-group">
                 <label>{{ _('color') }}</label>
-                <input type="text" id="ff-color" required placeholder="Чёрный">
+                <div class="color-picker-row">
+                    <input type="color" id="ff-color-picker" value="#000000" onchange="updateColorPreview()">
+                    <input type="text" id="ff-color" required placeholder="Чёрный" oninput="updateColorPickerFromText()">
+                </div>
+                <input type="hidden" id="ff-color-hex" value="">
             </div>
             <div class="form-group">
                 <label>{{ _('spool_weight') }}</label>
@@ -125,6 +134,21 @@
 </div>
 
 <script>
+function updateColorPreview() {
+    var picker = document.getElementById('ff-color-picker');
+    var text = document.getElementById('ff-color');
+    text.value = picker.value;
+}
+
+function updateColorPickerFromText() {
+    var picker = document.getElementById('ff-color-picker');
+    var text = document.getElementById('ff-color');
+    var val = text.value.trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        picker.value = val;
+    }
+}
+
 function openFilamentModal(mode, id, name, type, color, weight, price) {
     var m = document.getElementById('filament-modal');
     m.style.display = 'flex';
@@ -132,6 +156,8 @@ function openFilamentModal(mode, id, name, type, color, weight, price) {
     document.getElementById('ff-name').value = '';
     document.getElementById('ff-type').value = 'PLA';
     document.getElementById('ff-color').value = '';
+    document.getElementById('ff-color-picker').value = '#000000';
+    document.getElementById('ff-color-hex').value = '';
     document.getElementById('ff-weight').value = '1000';
     document.getElementById('ff-price').value = '1500';
     document.getElementById('fmodal-title').textContent = '{{ _('add_filament') }}';
@@ -156,6 +182,7 @@ document.getElementById('filament-form').addEventListener('submit', function(e) 
     fd.append('name', document.getElementById('ff-name').value);
     fd.append('filament_type', document.getElementById('ff-type').value);
     fd.append('color', document.getElementById('ff-color').value);
+    fd.append('color_hex', document.getElementById('ff-color-picker').value.replace('#', '').toUpperCase());
     fd.append('spool_weight_g', document.getElementById('ff-weight').value);
     fd.append('spool_price', document.getElementById('ff-price').value);
     var url = id ? '/filaments/' + id + '/edit' : '/filaments/add';
@@ -210,5 +237,10 @@ document.addEventListener('keydown', function(e) {
 .modal-close:hover { background:var(--bg-filament-color); color:var(--text); }
 .modal-form .form-group { margin-bottom:0.75rem; }
 .modal-actions { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; }
+.color-dot { display:inline-block; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); margin-right:0.5rem; vertical-align:middle; }
+.color-form-group .color-picker-row { display:flex; gap:0.5rem; align-items:center; }
+.color-form-group input[type="color"] { width:44px; height:38px; padding:0; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:none; }
+.color-form-group input[type="color"]::-webkit-color-swatch-wrapper { padding:2px; }
+.color-form-group input[type="color"]::-webkit-color-swatch { border-radius:6px; border:none; }
 </style>
 {% endblock %}
