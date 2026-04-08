@@ -8,7 +8,7 @@ import secrets
 import logging
 import urllib.request
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, Response, make_response, abort, jsonify
-from database import get_db, init_db, get_settings, init_shpoolken_db, is_shpoolken_loaded, get_shpoolken_filaments, get_shpoolken_manufacturers, get_shpoolken_materials, get_shpoolken_stats, insert_shpoolken_filaments
+from database import get_db, init_db, get_settings, init_shpoolken_db, is_shpoolken_loaded, get_shpoolken_filaments, count_shpoolken_filaments, get_shpoolken_manufacturers, get_shpoolken_materials, get_shpoolken_stats, insert_shpoolken_filaments
 from config import DEFAULT_ELECTRICITY_RATE, DEFAULT_BASE_RATE, DEFAULT_MARKUP_PERCENT, UPLOAD_DIR, LOG_FILE
 from translations import t as _t
 
@@ -1287,20 +1287,39 @@ def shpoolken_sync():
 @app.route("/shpoolken/search")
 def shpoolken_search():
     if not is_shpoolken_loaded():
-        return jsonify([])
+        return jsonify({"results": [], "total": 0})
     
-    q = request.args.get("q", "")
-    manufacturer = request.args.get("manufacturer", "")
-    material = request.args.get("material", "")
-    
-    results = get_shpoolken_filaments(
-        manufacturer=manufacturer if manufacturer else None,
-        material=material if material else None,
-        search=q if q else None,
-        limit=100
-    )
-    
-    return jsonify([dict(r) for r in results])
+    try:
+        q = request.args.get("q", "")
+        manufacturer = request.args.get("manufacturer", "")
+        material = request.args.get("material", "")
+        page = safe_int(request.args.get("page"), 1)
+        limit = safe_int(request.args.get("limit"), 20)
+        offset = (page - 1) * limit
+        
+        total = count_shpoolken_filaments(
+            manufacturer=manufacturer if manufacturer else None,
+            material=material if material else None,
+            search=q if q else None
+        )
+        
+        results = get_shpoolken_filaments(
+            manufacturer=manufacturer if manufacturer else None,
+            material=material if material else None,
+            search=q if q else None,
+            limit=limit,
+            offset=offset
+        )
+        
+        return jsonify({
+            "results": [dict(r) for r in results],
+            "total": total,
+            "page": page,
+            "limit": limit
+        })
+    except Exception as e:
+        logger.error(f"shpoolken_search error: {e}")
+        return jsonify({"error": str(e), "results": [], "total": 0}), 500
 
 
 @app.route("/shpoolken/add", methods=["POST"])

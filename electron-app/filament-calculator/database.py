@@ -236,7 +236,7 @@ def insert_shpoolken_filaments(filaments_data):
     conn.close()
 
 
-def get_shpoolken_filaments(manufacturer=None, material=None, search=None, limit=500):
+def get_shpoolken_filaments(manufacturer=None, material=None, search=None, limit=20, offset=0):
     conn = get_shpoolken_db()
     
     sql = "SELECT * FROM filaments WHERE 1=1"
@@ -255,12 +255,36 @@ def get_shpoolken_filaments(manufacturer=None, material=None, search=None, limit
         pattern = f"%{search}%"
         params.extend([pattern, pattern, pattern, pattern])
     
-    sql += " ORDER BY manufacturer, material, color_name LIMIT ?"
-    params.append(limit)
+    sql += " ORDER BY manufacturer, material, color_name LIMIT ? OFFSET ?"
+    params.extend([int(limit), int(offset)])
     
     rows = conn.execute(sql, params).fetchall()
     conn.close()
     return rows
+
+
+def count_shpoolken_filaments(manufacturer=None, material=None, search=None):
+    conn = get_shpoolken_db()
+    
+    sql = "SELECT COUNT(*) as cnt FROM filaments WHERE 1=1"
+    params = []
+    
+    if manufacturer:
+        sql += " AND manufacturer = ?"
+        params.append(manufacturer)
+    
+    if material:
+        sql += " AND material = ?"
+        params.append(material)
+    
+    if search:
+        sql += " AND (manufacturer LIKE ? OR name LIKE ? OR material LIKE ? OR color_name LIKE ?)"
+        pattern = f"%{search}%"
+        params.extend([pattern, pattern, pattern, pattern])
+    
+    row = conn.execute(sql, params).fetchone()
+    conn.close()
+    return row[0] if row else 0
 
 
 def get_shpoolken_manufacturers():

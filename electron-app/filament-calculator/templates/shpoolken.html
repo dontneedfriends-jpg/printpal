@@ -22,14 +22,14 @@
 {% else %}
 <div class="shpoolken-toolbar">
     <div class="shpoolken-filters">
-        <input type="text" id="shpoolken-search" placeholder="{{ _('shpoolken_search') }}" oninput="searchFilaments()">
-        <select id="shpoolken-manufacturer" onchange="searchFilaments()">
+        <input type="text" id="shpoolken-search" placeholder="{{ _('shpoolken_search') }}" oninput="scheduleSearch()">
+        <select id="shpoolken-manufacturer" onchange="scheduleSearch()">
             <option value="">{{ _('shpoolken_all_manufacturers') }}</option>
             {% for m in manufacturers %}
             <option value="{{ m.manufacturer }}">{{ m.manufacturer }} ({{ m.count }})</option>
             {% endfor %}
         </select>
-        <select id="shpoolken-material" onchange="searchFilaments()">
+        <select id="shpoolken-material" onchange="scheduleSearch()">
             <option value="">{{ _('shpoolken_all_materials') }}</option>
             {% for mat in materials %}
             <option value="{{ mat }}">{{ mat }}</option>
@@ -47,7 +47,16 @@
     </div>
 </div>
 
-<div id="shpoolken-list"></div>
+<div id="shpoolken-list">
+    <div class="shpoolken-empty-state">
+        <p>{{ _('shpoolken_search_hint') or 'Start typing to search filaments...' }}</p>
+    </div>
+</div>
+<div id="shpoolken-pagination" class="shpoolken-pagination" style="display: none;">
+    <button class="btn btn-secondary" id="page-prev" onclick="changePage(-1)">←</button>
+    <span id="page-info"></span>
+    <button class="btn btn-secondary" id="page-next" onclick="changePage(1)">→</button>
+</div>
 {% endif %}
 
 <div id="add-modal" class="modal-overlay" style="display: none;">
@@ -80,6 +89,17 @@
 
 <script>
 var currentResults = [];
+var currentPage = 1;
+var totalResults = 0;
+var searchTimeout = null;
+var isInitialRender = true;
+var PAGE_SIZE = 20;
+
+function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
 
 function syncDatabase() {
     var btn = event.target;
@@ -104,6 +124,14 @@ function syncDatabase() {
         });
 }
 
+function scheduleSearch() {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+        currentPage = 1;
+        searchFilaments();
+    }, 300);
+}
+
 function searchFilaments() {
     var q = document.getElementById('shpoolken-search').value.trim();
     var manufacturer = document.getElementById('shpoolken-manufacturer').value;
@@ -112,56 +140,96 @@ function searchFilaments() {
     var url = '/shpoolken/search?q=' + encodeURIComponent(q);
     if (manufacturer) url += '&manufacturer=' + encodeURIComponent(manufacturer);
     if (material) url += '&material=' + encodeURIComponent(material);
+    url += '&page=' + currentPage + '&limit=' + PAGE_SIZE;
     
     fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            currentResults = data;
-            renderResults(data);
+            if (data.error) {
+                showToast('Error: ' + data.error, 'error');
+            }
+            currentResults = data.results || [];
+            totalResults = data.total || 0;
+            renderResults(currentResults);
+            updatePagination();
         });
+}
+
+function changePage(delta) {
+    var newPage = currentPage + delta;
+    var totalPages = Math.ceil(totalResults / PAGE_SIZE);
+    if (newPage < 1 || newPage > totalPages) return;
+    currentPage = newPage;
+    searchFilaments();
+}
+
+function updatePagination() {
+    var pagination = document.getElementById('shpoolken-pagination');
+    var pageInfo = document.getElementById('page-info');
+    var prevBtn = document.getElementById('page-prev');
+    var nextBtn = document.getElementById('page-next');
+    var totalPages = Math.ceil(totalResults / PAGE_SIZE);
+    
+    if (totalResults === 0) {
+        pagination.style.display = 'none';
+        return;
+    }
+    
+    pagination.style.display = 'flex';
+    pageInfo.textContent = currentPage + ' / ' + totalPages + ' (' + totalResults + ')';
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
 }
 
 function renderResults(results) {
     var container = document.getElementById('shpoolken-list');
     
     if (results.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No results</p>';
+        container.innerHTML = '<div class="shpoolken-empty-state"><p>No results found</p></div>';
         return;
     }
     
-    var html = '<div class="shpoolken-grid">';
+    var parts = [];
+    parts.push('<div class="shpoolken-grid' + (isInitialRender ? ' no-animate' : '') + '">');
     
     results.forEach(function(f) {
-        var colorStyle = f.color_hex ? 'background:#' + f.color_hex + ';' : 'background:#888;';
+        var colorHex = f.color_hex ? f.color_hex : '888';
         var colorName = f.color_name || '';
-        if (colorName === '{color_name}') colorName = '';
-        var filamentName = f.name || '';
-        if (filamentName === '{color_name}') filamentName = '';
+        var filamentName = (f.name || '').replace('{color_name}', colorName);
+        if (filamentName === colorName && colorName) filamentName = '';
         var tempInfo = '';
-        if (f.extruder_temp) tempInfo += f.extruder_temp + '°C';
-        if (f.bed_temp) tempInfo += ' / ' + f.bed_temp + '°C';
+        if (f.extruder_temp) tempInfo = escapeHtml(f.extruder_temp) + '°C';
+        if (f.bed_temp) tempInfo += ' / ' + escapeHtml(f.bed_temp) + '°C';
         
-        html += '<div class="shpoolken-card">';
-        html += '<div class="shpoolken-card-color" style="' + colorStyle + '"></div>';
-        html += '<div class="shpoolken-card-body">';
-        html += '<div class="shpoolken-card-manufacturer">' + f.manufacturer + '</div>';
-        html += '<div class="shpoolken-card-material">' + f.material + '</div>';
-        if (colorName) html += '<div class="shpoolken-card-color-name">' + colorName + '</div>';
-        if (filamentName) html += '<div class="shpoolken-card-name">' + filamentName + '</div>';
-        html += '<div class="shpoolken-card-details">';
-        if (tempInfo) html += '<span>' + tempInfo + '</span>';
-        html += '<span>' + (f.diameter || 1.75) + ' мм</span>';
-        html += '<span>' + (f.weight || 1000) + 'г</span>';
-        if (f.finish) html += '<span>' + f.finish + '</span>';
-        if (f.pattern) html += '<span>' + f.pattern + '</span>';
-        html += '</div>';
-        html += '</div>';
-        html += '<button class="shpoolken-card-add btn btn-primary" onclick="openAddModal(\'' + f.id + '\')">+</button>';
-        html += '</div>';
+        parts.push('<div class="shpoolken-card">');
+        parts.push('<div class="shpoolken-card-color" style="background:#' + colorHex + ';"></div>');
+        parts.push('<div class="shpoolken-card-body">');
+        parts.push('<div class="shpoolken-card-manufacturer">' + escapeHtml(f.manufacturer) + '</div>');
+        parts.push('<div class="shpoolken-card-material">' + escapeHtml(f.material) + '</div>');
+        if (colorName) parts.push('<div class="shpoolken-card-color-name">' + escapeHtml(colorName) + '</div>');
+        if (filamentName) parts.push('<div class="shpoolken-card-name">' + escapeHtml(filamentName) + '</div>');
+        parts.push('<div class="shpoolken-card-details">');
+        if (tempInfo) parts.push('<span>' + tempInfo + '</span>');
+        parts.push('<span>' + (f.diameter || 1.75) + ' мм</span>');
+        parts.push('<span>' + (f.weight || 1000) + 'г</span>');
+        if (f.finish) parts.push('<span>' + escapeHtml(f.finish) + '</span>');
+        if (f.pattern) parts.push('<span>' + escapeHtml(f.pattern) + '</span>');
+        parts.push('</div>');
+        parts.push('</div>');
+        parts.push('<button class="shpoolken-card-add btn btn-primary" onclick="openAddModal(\'' + f.id + '\')">+</button>');
+        parts.push('</div>');
     });
     
-    html += '</div>';
-    container.innerHTML = html;
+    parts.push('</div>');
+    container.innerHTML = parts.join('');
+    
+    if (isInitialRender) {
+        setTimeout(function() {
+            var grid = container.querySelector('.shpoolken-grid');
+            if (grid) grid.classList.remove('no-animate');
+            isInitialRender = false;
+        }, 50);
+    }
 }
 
 function openAddModal(id) {
@@ -194,10 +262,6 @@ function closeAddModal() {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeAddModal();
 });
-
-if (document.getElementById('shpoolken-list')) {
-    searchFilaments();
-}
 </script>
 
 <style>
@@ -355,5 +419,29 @@ if (document.getElementById('shpoolken-list')) {
 .modal-close:hover { background:var(--bg-filament-color); color:var(--text); }
 .modal-form .form-group { margin-bottom:0.75rem; }
 .modal-actions { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; }
+
+.shpoolken-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+
+.shpoolken-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+}
+
+.shpoolken-pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.shpoolken-grid.no-animate .shpoolken-card {
+    transition: none;
+}
 </style>
 {% endblock %}
