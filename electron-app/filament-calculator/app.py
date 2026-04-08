@@ -9,11 +9,15 @@ import logging
 import urllib.request
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, Response, make_response, abort, jsonify
 from database import get_db, init_db, get_settings, init_shpoolken_db, is_shpoolken_loaded, get_shpoolken_filaments, get_shpoolken_manufacturers, get_shpoolken_materials, get_shpoolken_stats, insert_shpoolken_filaments
-from config import DEFAULT_ELECTRICITY_RATE, DEFAULT_BASE_RATE, DEFAULT_MARKUP_PERCENT, UPLOAD_DIR
+from config import DEFAULT_ELECTRICITY_RATE, DEFAULT_BASE_RATE, DEFAULT_MARKUP_PERCENT, UPLOAD_DIR, LOG_FILE
 from translations import t as _t
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+if os.path.exists(os.path.dirname(LOG_FILE)):
+    file_handler = logging.FileHandler(LOG_FILE)
+    file_handler.setLevel(logging.ERROR)
+    logger.addHandler(file_handler)
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -29,21 +33,29 @@ def safe_filename(filename):
     return filename
 
 
-def safe_float(value, default=0.0):
+def safe_float(value, default=0.0, min_val=None, max_val=None):
     try:
         result = float(value)
         if result < 0:
             return default
+        if min_val is not None and result < min_val:
+            return default
+        if max_val is not None and result > max_val:
+            return max_val
         return result
     except (TypeError, ValueError):
         return default
 
 
-def safe_int(value, default=0):
+def safe_int(value, default=0, min_val=None, max_val=None):
     try:
         result = int(value)
         if result < 0:
             return default
+        if min_val is not None and result < min_val:
+            return default
+        if max_val is not None and result > max_val:
+            return max_val
         return result
     except (TypeError, ValueError):
         return default
@@ -170,7 +182,7 @@ def add_printer():
     db = get_db()
     db.execute(
         "INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip) VALUES (?, ?, ?, ?, ?, ?)",
-        (request.form["name"], safe_float(request.form["power_watts"], 200), safe_float(request.form["purchase_price"]), safe_float(request.form["depreciation_per_hour"]), request.form.get("ip_address", ""), request.form.get("camera_ip", ""))
+        (request.form["name"], safe_float(request.form["power_watts"], 200, 1, 10000), safe_float(request.form["purchase_price"], 0, 0, 1000000), safe_float(request.form["depreciation_per_hour"], 0, 0, 100), request.form.get("ip_address", ""), request.form.get("camera_ip", ""))
     )
     db.commit()
     db.close()
@@ -184,7 +196,7 @@ def edit_printer(id):
     db = get_db()
     db.execute(
         "UPDATE printers SET name=?, power_watts=?, purchase_price=?, depreciation_per_hour=?, ip_address=?, camera_ip=? WHERE id=?",
-        (request.form["name"], safe_float(request.form["power_watts"], 200), safe_float(request.form["purchase_price"]), safe_float(request.form["depreciation_per_hour"]), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), id)
+        (request.form["name"], safe_float(request.form["power_watts"], 200, 1, 10000), safe_float(request.form["purchase_price"], 0, 0, 1000000), safe_float(request.form["depreciation_per_hour"], 0, 0, 100), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), id)
     )
     db.commit()
     db.close()
@@ -323,9 +335,9 @@ def calculator():
 def preview_cost():
     db = get_db()
     printer = db.execute("SELECT * FROM printers WHERE id = ?", (request.form["printer_id"],)).fetchone()
-    print_time = safe_float(request.form["print_time_hours"], 1)
-    base_rate = safe_float(request.form.get("base_rate", DEFAULT_BASE_RATE), DEFAULT_BASE_RATE)
-    markup_pct = safe_float(request.form.get("markup_percent", DEFAULT_MARKUP_PERCENT), DEFAULT_MARKUP_PERCENT)
+    print_time = safe_float(request.form["print_time_hours"], 1, 0, 8760)
+    base_rate = safe_float(request.form.get("base_rate", DEFAULT_BASE_RATE), DEFAULT_BASE_RATE, 0, 10000)
+    markup_pct = safe_float(request.form.get("markup_percent", DEFAULT_MARKUP_PERCENT), DEFAULT_MARKUP_PERCENT, 0, 500)
 
     filament_ids = request.form.getlist("filament_id")
     filament_weights = request.form.getlist("filament_weight")
@@ -393,9 +405,9 @@ def preview_cost():
 def save_calculation():
     db = get_db()
     printer = db.execute("SELECT * FROM printers WHERE id = ?", (request.form["printer_id"],)).fetchone()
-    print_time = safe_float(request.form["print_time_hours"], 1)
-    base_rate = safe_float(request.form["base_rate"], DEFAULT_BASE_RATE)
-    markup_pct = safe_float(request.form["markup_percent"], DEFAULT_MARKUP_PERCENT)
+    print_time = safe_float(request.form["print_time_hours"], 1, 0, 8760)
+    base_rate = safe_float(request.form["base_rate"], DEFAULT_BASE_RATE, 0, 10000)
+    markup_pct = safe_float(request.form["markup_percent"], DEFAULT_MARKUP_PERCENT, 0, 500)
 
     filament_ids = request.form.getlist("filament_id")
     filament_weights = request.form.getlist("filament_weight")
@@ -1204,7 +1216,7 @@ SHPOLKEN_GITHUB = "https://raw.githubusercontent.com/dontneedfriends-jpg/Shpoolk
 
 def check_internet():
     try:
-        req = urllib.request.Request("https://www.google.com/favicon.ico")
+        req = urllib.request.Request("https://api.github.com/")
         req.add_header("User-Agent", "Mozilla/5.0")
         urllib.request.urlopen(req, timeout=5)
         return True

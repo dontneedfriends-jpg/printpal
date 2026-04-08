@@ -55,42 +55,17 @@ ipcMain.on("win-maximize", () => {
 ipcMain.on("win-close", () => mainWindow && mainWindow.close());
 
 function findPython() {
+  const candidates = ["python", "python3", "py"];
   const localAppData = process.env.LOCALAPPDATA || "";
   const progFiles = process.env.ProgramFiles || "C:\\Program Files";
-
-  const candidates = [
-    path.join(localAppData, "Programs", "Python", "Python314", "python.exe"),
-    path.join(localAppData, "Programs", "Python", "Python313", "python.exe"),
-    path.join(localAppData, "Programs", "Python", "Python312", "python.exe"),
-    path.join(localAppData, "Programs", "Python", "Python311", "python.exe"),
-    path.join(localAppData, "Programs", "Python", "Python310", "python.exe"),
-    path.join(progFiles, "Python314", "python.exe"),
-    path.join(progFiles, "Python313", "python.exe"),
-    path.join(progFiles, "Python312", "python.exe"),
-    path.join(progFiles, "Python311", "python.exe"),
-    path.join(progFiles, "Python310", "python.exe"),
-    `C:\\Python314\\python.exe`,
-    `C:\\Python313\\python.exe`,
-    `C:\\Python312\\python.exe`,
-    `C:\\Python311\\python.exe`,
-    `C:\\Python310\\python.exe`,
-  ];
-
+  for (const ver of ["Python314", "Python313", "Python312", "Python311", "Python310"]) {
+    candidates.push(path.join(localAppData, "Programs", ver, "python.exe"));
+    candidates.push(path.join(progFiles, ver, "python.exe"));
+    candidates.push(`C:\\${ver}\\python.exe`);
+  }
   for (const cmd of candidates) {
     try {
-      execSync(cmd + " --version", { stdio: "pipe", timeout: 2000 });
-      try {
-        execSync(cmd + ' -c "import flask"', { stdio: "pipe", timeout: 3000 });
-        return cmd;
-      } catch (e) {
-        return cmd;
-      }
-    } catch (e) {}
-  }
-  // Fallback to PATH commands
-  for (const cmd of ["py", "python3", "python"]) {
-    try {
-      execSync(cmd + " --version", { stdio: "pipe", timeout: 2000 });
+      execSync(`"${cmd}" --version`, { stdio: "pipe", timeout: 2000 });
       return cmd;
     } catch (e) {}
   }
@@ -108,27 +83,20 @@ function checkFlask(pythonCmd) {
 
 function installFlask(pythonCmd, cwd) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(pythonCmd, ["-m", "pip", "install", "--quiet", "flask"], {
+    const proc = spawn(`"${pythonCmd}"`, ["-m", "pip", "install", "--quiet", "flask"], {
       cwd: cwd || process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      shell: true,
     });
     let output = "";
-    const timeout = setTimeout(() => {
-      proc.kill();
-      reject(new Error("Flask installation timed out (30s)"));
-    }, 30000);
     proc.stdout.on("data", (d) => { output += d.toString(); });
     proc.stderr.on("data", (d) => { output += d.toString(); });
     proc.on("close", (code) => {
-      clearTimeout(timeout);
       if (code === 0) resolve();
       else reject(new Error(output || `Exit code ${code}`));
     });
-    proc.on("error", (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
+    proc.on("error", reject);
   });
 }
 

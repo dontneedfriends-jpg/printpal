@@ -1,14 +1,12 @@
 import sqlite3
 import os
-import logging
 from config import DATABASE
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+_db_initialized = False
 
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
@@ -17,7 +15,11 @@ def get_db():
     conn.execute("PRAGMA temp_store = MEMORY")
     return conn
 
+
 def init_db():
+    global _db_initialized
+    if _db_initialized:
+        return
     conn = get_db()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS printers (
@@ -116,6 +118,7 @@ def init_db():
 
     conn.commit()
     conn.close()
+    _db_initialized = True
 
 
 def get_settings():
