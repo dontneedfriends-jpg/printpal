@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_filaments') }} - PrintPAL{% endblock %}
+{% block content %}
+<h1>{{ _('nav_filaments') }}</h1>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; gap:0.75rem; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+        <span>{{ filaments|length }} {{ _('spools') }}</span>
+    </div>
+    <div style="display:flex; gap:0.5rem; flex:1; min-width:200px; flex-wrap:wrap;">
+        <input type="text" id="filament-search" placeholder="{{ _('search') }}" style="flex:1; min-width:150px; padding:0.5rem 0.75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem;" oninput="filterFilaments()">
+        <button class="btn btn-secondary" id="btn-select-mode" onclick="toggleSelectMode()">☐ {{ _('select') }}</button>
+        <button class="btn btn-primary" onclick="openFilamentModal('add')">+ {{ _('add') }}</button>
+        <a href="{{ url_for('export_filaments') }}" class="btn btn-secondary" title="Экспорт">📤</a>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-form').style.display='block'" title="Импорт">📥</button>
+    </div>
+</div>
+
+<div id="bulk-actions" class="card" style="display:none; margin-bottom:1rem; padding:0.75rem 1rem; background:var(--bg-card); border:1px solid var(--accent);">
+    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+        <span id="selected-count">0 {{ _('selected') }}</span>
+        <button type="button" class="btn btn-danger" onclick="bulkDeleteFilaments()">{{ _('delete_selected') }} (🗑️)</button>
+        <button type="button" class="btn btn-secondary" onclick="toggleAllFilaments()">
+            {{ _('select_all') }}
+        </button>
+    </div>
+</div>
+
+<form id="import-form" class="card" style="display:none; margin-bottom:1rem; padding:1rem;">
+    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+        <label style="font-size:0.9rem; font-weight:500;">Импорт филаментов из JSON:</label>
+        <input type="file" id="import_file" name="import_file" accept=".json" style="flex:1; min-width:150px;">
+        <button type="submit" formaction="{{ url_for('import_filaments') }}" formmethod="POST" formenctype="multipart/form-data" class="btn btn-primary">Импортировать</button>
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('import-form').style.display='none'">✕</button>
+    </div>
+</form>
+
+<div class="card" style="padding:0; overflow:hidden;">
+    {% if filaments %}
+    <table class="table" style="margin:0;">
+        <thead>
+            <tr>
+                <th class="select-col" style="display:none;"></th>
+                <th>{{ _('name') }}</th>
+                <th>{{ _('filament_type') }}</th>
+                <th>{{ _('color') }}</th>
+                <th>{{ _('remaining') }}</th>
+                <th>{{ _('price_per_g') }}</th>
+                <th>Штрихкод</th>
+                <th style="width:200px;">{{ _('actions') }}</th>
+            </tr>
+        </thead>
+        <tbody id="filament-tbody">
+            {% for f in filaments %}
+            <tr id="frow-{{ f.id }}" class="{{ 'row-low' if f.remaining_g < 200 else 'row-medium' if f.remaining_g < 500 }}">
+                <td class="select-col" style="display:none;"><input type="checkbox" class="filament-check" value="{{ f.id }}" onchange="updateSelectedCount()"></td>
+                <td>{{ f.name }}</td>
+                <td>{{ f.filament_type }}</td>
+                <td>
+                    {% if f.color_hex %}
+                    <span class="color-dot" style="background:#{{ f.color_hex }};"></span>
+                    {% endif %}
+                    {{ f.color }}
+                </td>
+                <td>
+                    <div class="remaining-cell">
+                        <span>{{ "%.0f"|format(f.remaining_g) }} / {{ "%.0f"|format(f.spool_weight_g) }} г</span>
+                        <div class="mini-bar">
+                            <div class="mini-fill {{ 'bar-low' if f.remaining_g < 200 else 'bar-medium' if f.remaining_g < 500 else 'bar-ok' }}" style="width: {{ (f.remaining_g / f.spool_weight_g * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ "%.2f"|format(f.price_per_g) }} руб</td>
+                <td>{{ f.barcode or '' }}</td>
+                <td>
+                    <button class="btn btn-small" onclick="openFilamentModal('edit', {{ f.id }}, '{{ f.name|replace("'","\\'") }}', '{{ f.filament_type }}', '{{ f.color|replace("'","\\'") }}', {{ f.spool_weight_g }}, {{ f.spool_price }}, '{{ f.barcode|default('', true) }}')">✏️</button>
+                    <button class="btn btn-small btn-secondary" onclick="openAdjustModal({{ f.id }}, {{ f.remaining_g }})">⚖️</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteFilament({{ f.id }})">🗑️</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-msg" style="padding:3rem;">{{ _('no_filaments') }}</p>
+    {% endif %}
+</div>
+
+<div id="filament-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="fmodal-title">{{ _('add_filament') }}</h3>
+            <button class="modal-close" onclick="closeFilamentModal()">✕</button>
+        </div>
+        <form id="filament-form" class="modal-form">
+            <input type="hidden" id="fform-id" value="">
+            <div class="form-group">
+                <label>{{ _('name') }}</label>
+                <input type="text" id="ff-name" required placeholder="eSun PLA+">
+            </div>
+            <div class="form-group">
+                <label>{{ _('filament_type') }}</label>
+                <select id="ff-type" required>
+                    <option value="PLA">PLA</option><option value="PLA+">PLA+</option><option value="PETG">PETG</option>
+                    <option value="ABS">ABS</option><option value="TPU">TPU</option><option value="Nylon">Nylon</option>
+                    <option value="ASA">ASA</option><option value="PC">PC</option><option value="Другой">Другой</option>
+                </select>
+            </div>
+            <div class="form-group color-form-group">
+                <label>{{ _('color') }}</label>
+                <div class="color-picker-row">
+                    <input type="color" id="ff-color-picker" value="#000000" onchange="updateColorPreview()">
+                    <input type="text" id="ff-color" required placeholder="Чёрный" oninput="updateColorPickerFromText()">
+                </div>
+                <input type="hidden" id="ff-color-hex" value="">
+            </div>
+            <div class="form-group">
+                <label>{{ _('spool_weight') }}</label>
+                <input type="number" id="ff-weight" step="1" value="1000" required>
+            </div>
+            <div class="form-group">
+                <label>{{ _('spool_price') }}</label>
+                <input type="number" id="ff-price" step="0.01" value="1500" required>
+            </div>
+            <div class="form-group">
+                <label>Штрихкод</label>
+                <input type="text" id="ff-barcode" placeholder="1234567890123">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeFilamentModal()">{{ _('cancel') }}</button>
+                <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="adjust-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>{{ _('adjust_rem') }}</h3>
+            <button class="modal-close" onclick="closeAdjustModal()">✕</button>
+        </div>
+        <form id="adjust-form" class="modal-form">
+            <input type="hidden" id="adjust-id" value="">
+            <div class="form-group">
+                <label>{{ _('current_rem') }}</label>
+                <input type="number" id="adjust-remaining" step="1" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeAdjustModal()">{{ _('cancel') }}</button>
+                <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function updateColorPreview() {
+    var picker = document.getElementById('ff-color-picker');
+    var text = document.getElementById('ff-color');
+    text.value = picker.value;
+}
+
+function updateColorPickerFromText() {
+    var picker = document.getElementById('ff-color-picker');
+    var text = document.getElementById('ff-color');
+    var val = text.value.trim();
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        picker.value = val;
+    }
+}
+
+function openFilamentModal(mode, id, name, type, color, weight, price, barcode) {
+    var m = document.getElementById('filament-modal');
+    m.style.display = 'flex';
+    document.getElementById('fform-id').value = '';
+    document.getElementById('ff-name').value = '';
+    document.getElementById('ff-type').value = 'PLA';
+    document.getElementById('ff-color').value = '';
+    document.getElementById('ff-color-picker').value = '#000000';
+    document.getElementById('ff-color-hex').value = '';
+    document.getElementById('ff-weight').value = '1000';
+    document.getElementById('ff-price').value = '1500';
+    document.getElementById('ff-barcode').value = '';
+    document.getElementById('fmodal-title').textContent = '{{ _('add_filament') }}';
+    if (mode === 'edit') {
+        document.getElementById('fform-id').value = id;
+        document.getElementById('ff-name').value = name;
+        document.getElementById('ff-type').value = type;
+        document.getElementById('ff-color').value = color;
+        document.getElementById('ff-weight').value = weight;
+        document.getElementById('ff-price').value = price;
+        document.getElementById('ff-barcode').value = barcode || '';
+        document.getElementById('fmodal-title').textContent = '{{ _('edit_filament') }}';
+    }
+    setTimeout(function() { document.getElementById('ff-name').focus(); }, 100);
+}
+
+function closeFilamentModal() { document.getElementById('filament-modal').style.display = 'none'; }
+
+document.getElementById('filament-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('fform-id').value;
+    var fd = new FormData();
+    fd.append('name', document.getElementById('ff-name').value);
+    fd.append('filament_type', document.getElementById('ff-type').value);
+    fd.append('color', document.getElementById('ff-color').value);
+    fd.append('color_hex', document.getElementById('ff-color-picker').value.replace('#', '').toUpperCase());
+    fd.append('spool_weight_g', document.getElementById('ff-weight').value);
+    fd.append('spool_price', document.getElementById('ff-price').value);
+    fd.append('barcode', document.getElementById('ff-barcode').value);
+    var url = id ? '/filaments/' + id + '/edit' : '/filaments/add';
+    fetch(url, { method: 'POST', body: fd }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
+});
+
+function openAdjustModal(id, remaining) {
+    document.getElementById('adjust-id').value = id;
+    document.getElementById('adjust-remaining').value = remaining;
+    document.getElementById('adjust-modal').style.display = 'flex';
+    setTimeout(function() { document.getElementById('adjust-remaining').focus(); }, 100);
+}
+
+function closeAdjustModal() { document.getElementById('adjust-modal').style.display = 'none'; }
+
+document.getElementById('adjust-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('adjust-id').value;
+    var fd = new FormData();
+    fd.append('remaining_g', document.getElementById('adjust-remaining').value);
+    fetch('/filaments/' + id + '/adjust', { method: 'POST', body: fd }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
+});
+
+function deleteFilament(id) {
+    appConfirm('{{ _('confirm_delete') }}').then(function(ok) {
+        if (!ok) return;
+        fetch('/filaments/' + id + '/delete', { method: 'POST' })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            var row = document.getElementById('frow-' + id);
+            if (row) row.remove();
+            if (data && data.data) {
+                showUndoToast('{{ _('deleted') }}', function() {
+                    fetch('/filaments/restore', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data.data)
+                    }).then(function() { location.reload(); });
+                });
+            } else {
+                showToast('{{ _('deleted') }}', 'success');
+            }
+        });
+    });
+}
+
+function filterFilaments() {
+    var q = document.getElementById('filament-search').value.toLowerCase();
+    document.querySelectorAll('#filament-tbody tr').forEach(function(row) {
+        row.style.display = row.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    });
+}
+
+function toggleSelectMode() {
+    var btn = document.getElementById('btn-select-mode');
+    var bulkActions = document.getElementById('bulk-actions');
+    var checkboxes = document.querySelectorAll('#filament-tbody .filament-check');
+    var thSelect = document.querySelectorAll('.select-col');
+    
+    if (bulkActions.style.display === 'none') {
+        bulkActions.style.display = 'block';
+        btn.textContent = '☑ {{ _("select") }}';
+        checkboxes.forEach(function(cb) { cb.parentElement.style.display = ''; });
+        thSelect.forEach(function(th) { th.style.display = ''; });
+    } else {
+        bulkActions.style.display = 'none';
+        btn.textContent = '☐ {{ _("select") }}';
+        checkboxes.forEach(function(cb) { cb.checked = false; cb.parentElement.style.display = 'none'; });
+        thSelect.forEach(function(th) { th.style.display = 'none'; });
+        updateSelectedCount();
+    }
+}
+
+function toggleSelectAll(source) {
+    var checkboxes = document.querySelectorAll('.filament-check');
+    checkboxes.forEach(function(cb) { cb.checked = source.checked; });
+    updateSelectedCount();
+}
+
+function toggleAllFilaments() {
+    var checkboxes = document.querySelectorAll('.filament-check');
+    var allChecked = Array.from(checkboxes).every(function(cb) { return cb.checked; });
+    checkboxes.forEach(function(cb) { cb.checked = !allChecked; });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    var checked = document.querySelectorAll('.filament-check:checked');
+    document.getElementById('selected-count').textContent = checked.length + ' {{ _("selected") }}';
+}
+
+function bulkDeleteFilaments() {
+    var checked = document.querySelectorAll('.filament-check:checked');
+    if (checked.length === 0) return;
+    
+    appConfirm(checked.length + ' {{ _("confirm_delete") }}').then(function(ok) {
+        if (!ok) return;
+        var ids = Array.from(checked).map(function(cb) { return cb.value; });
+        var promises = ids.map(function(id) {
+            return fetch('/filaments/' + id + '/delete', { method: 'POST' })
+                .then(function(resp) { return resp.json(); });
+        });
+        
+        Promise.all(promises).then(function() {
+            checked.forEach(function(cb) {
+                var row = document.getElementById('frow-' + cb.value);
+                if (row) row.remove();
+            });
+            showToast(checked.length + ' {{ _("deleted") }}', 'success');
+            updateSelectedCount();
+            toggleSelectMode();
+        });
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeFilamentModal(); closeAdjustModal(); }
+});
+</script>
+
+<style>
+.modal-overlay { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.modal-box { background:var(--bg-card); border:1px solid var(--glass-border); border-radius:16px; padding:1.5rem; width:90%; max-width:450px; box-shadow:0 16px 48px rgba(0,0,0,0.3); animation:modalIn 0.2s ease-out; }
+@keyframes modalIn { from{transform:scale(0.95);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+.modal-header h3 { margin:0; }
+.modal-close { background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer; padding:0.25rem 0.5rem; border-radius:6px; }
+.modal-close:hover { background:var(--bg-filament-color); color:var(--text); }
+.modal-form .form-group { margin-bottom:0.75rem; }
+.modal-actions { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; }
+.color-dot { display:inline-block; width:18px; height:18px; border-radius:50%; border:1px solid var(--border); margin-right:0.5rem; vertical-align:middle; }
+.color-form-group .color-picker-row { display:flex; gap:0.5rem; align-items:center; }
+.color-form-group input[type="color"] { width:44px; height:38px; padding:0; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:none; }
+.color-form-group input[type="color"]::-webkit-color-swatch-wrapper { padding:2px; }
+.color-form-group input[type="color"]::-webkit-color-swatch { border-radius:6px; border:none; }
+</style>
+{% endblock %}
