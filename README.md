@@ -4,7 +4,6 @@
 
 **EN** — Filament tracker and 3D print cost calculator.
 
-> **Version 1.1.0** — см. [Changelog](CHANGELOG.md)
 
 <img width="1280" height="1032" alt="dash" src="https://github.com/user-attachments/assets/7c37d0d5-5c94-441d-86ca-4ccbd872c8c2" />
 
