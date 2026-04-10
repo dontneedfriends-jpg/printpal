@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist6/
+*.db
+uploads/
+*.pyc
+__pycache__/
+.env
+.DS_Store
+RELEASE_NOTES.md
+*.log
+*.exe
+resources/
+app.asar
+app.asar.unpacked
