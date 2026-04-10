@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ _('nav_home') }} - PrintPAL{% endblock %}
+{% block content %}
+<h1>{{ _('dashboard') }}</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ printers|length }}</div>
+        <div class="stat-label">{{ _('printers_count') }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ filaments|length }}</div>
+        <div class="stat-label">{{ _('spools_count') }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ today_count }}</div>
+        <div class="stat-label">{{ _('calc_today') }}</div>
+    </div>
+</div>
+
+{% if maintenance %}
+<h2>{{ _('maintenance') }}</h2>
+<div class="maintenance-grid">
+    {% for m in maintenance %}
+    <div class="maint-card {{ 'maint-ok' if m.remaining > m.total * 0.3 else 'maint-warn' if m.remaining > m.total * 0.1 else 'maint-crit' }}">
+        <div class="maint-name">{{ m.name }}</div>
+        <div class="maint-hours">
+            <span class="maint-remaining">{{ m.remaining }} {{ _('maint_hours') }}</span>
+            <span class="maint-total">{{ _('maint_from') }} {{ m.total }} {{ _('maint_hours') }}</span>
+        </div>
+        <div class="maint-bar">
+            <div class="maint-fill" style="width: {{ m.pct|int }}%"></div>
+        </div>
+        <div class="maint-detail">{{ m.used }} {{ _('maint_used') }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<h2>{{ _('remaining') }}</h2>
+<div class="filament-grid">
+    {% for f in filaments %}
+    <div class="filament-card {{ 'low' if f.remaining_g < 200 else 'medium' if f.remaining_g < 500 else 'ok' }}">
+        <div class="filament-header">
+            <span class="filament-name">{{ f.name }}</span>
+            {% if f.color_hex %}
+            <span class="filament-color-dot" style="background:#{{ f.color_hex }};"></span>
+            {% elif f.color and f.color not in f.name %}
+            <span class="filament-color">{{ f.color }}</span>
+            {% endif %}
+        </div>
+        <div class="filament-type">{{ f.filament_type }}</div>
+        <div class="filament-remaining">
+            <span class="remaining-value">{{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }}</span>
+            <span class="remaining-bar">
+                <span class="remaining-fill" style="width: {{ (f.remaining_g / f.spool_weight_g * 100)|int }}%"></span>
+            </span>
+        </div>
+        <div class="filament-price">{{ "%.2f"|format(f.price_per_g) }} {{ _('rub_g') }}</div>
+    </div>
+    {% else %}
+    <p class="empty-msg">{{ _('no_filaments') }}. <a href="{{ url_for('filaments') }}">{{ _('add_filament') }}</a></p>
+    {% endfor %}
+</div>
+
+<a href="{{ url_for('calculator') }}" class="btn btn-primary btn-large">{{ _('go_calc') }}</a>
+
+<style>
+.maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.maint-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 1.15rem;
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    border-left: 4px solid var(--success);
+    transition: all 0.3s ease;
+}
+.maint-card.maint-warn { border-left-color: var(--warning-accent); }
+.maint-card.maint-crit { border-left-color: var(--low-accent); }
+.maint-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.4rem; }
+.maint-hours { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+.maint-remaining { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+.maint-total { font-size: 0.82rem; color: var(--text-muted); }
+.maint-bar { height: 6px; background: var(--bg-remaining-bar); border-radius: 3px; overflow: hidden; }
+.maint-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.4s ease; }
+.maint-card.maint-warn .maint-fill { background: var(--warning-accent); }
+.maint-card.maint-crit .maint-fill { background: var(--low-accent); }
+.maint-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; }
+.filament-color-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--glass-border); flex-shrink: 0; }
+</style>
+{% endblock %}

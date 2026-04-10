@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a14; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#d8d8f0; overflow:hidden; user-select:none; }
+.logo { font-size:2rem; font-weight:800; background:linear-gradient(135deg,#6c8cff,#8b5cf6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:1rem; }
+.msg { text-align:center; max-width:500px; color:#7878a0; font-size:0.9rem; line-height:1.6; }
+.msg strong { color:#f87171; }
+.code { background:#1a1a2e; padding:0.2rem 0.4rem; border-radius:4px; font-size:0.85rem; color:#8b5cf6; word-break:break-all; }
+.retry-btn { margin-top:1.5rem; padding:0.75rem 1.5rem; background:linear-gradient(135deg,#6c8cff,#8b5cf6); border:none; border-radius:8px; color:#fff; font-size:0.9rem; cursor:pointer; -webkit-app-region:no-drag; }
+.retry-btn:hover { opacity:0.9; }
+</style>
+</head>
+<body>
+<div class="logo">PrintPAL</div>
+<div class="msg">
+  <strong>Ошибка запуска Flask</strong><br><br>
+  Проверьте консоль разработчика (F12)<br><br>
+  Пути (смотрите логи выше):<br>
+  <span id="debug"></span>
+</div>
+<button class="retry-btn" onclick="location.reload()">Повторить попытку</button>
+<script>
+window.onerror = function(msg, url, line) {
+  document.getElementById('debug').innerHTML += '<br>Error: ' + msg + ' line:' + line;
+};
+// Try to get info from console
+setTimeout(function() {
+  document.getElementById('debug').innerHTML = 'Запустите приложение снова и откройте консоль (F12)';
+}, 1000);
+</script>
+</body>
+</html>

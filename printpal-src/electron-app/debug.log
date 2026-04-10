@@ -1,0 +1,47 @@
+=== main.js started ===
+2026-04-10T11:09:46.073Z === APP READY ===
+2026-04-10T11:09:46.073Z App path: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app
+2026-04-10T11:09:46.074Z Resources path: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\node_modules\electron\dist\resources
+2026-04-10T11:09:46.074Z isPackaged: false
+2026-04-10T11:09:46.075Z __dirname: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app
+2026-04-10T11:09:48.138Z App base path: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app
+2026-04-10T11:09:48.139Z App is packaged: false
+2026-04-10T11:09:48.140Z Dev mode branch
+2026-04-10T11:09:48.140Z Python exists: true C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\python\python.exe
+2026-04-10T11:09:48.141Z Script exists: true C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\filament-calculator\app.py
+2026-04-10T11:09:48.141Z Python dir: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\python
+2026-04-10T11:09:48.141Z Python path: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\python\Lib\site-packages
+2026-04-10T11:09:48.173Z PYTHON TEST OUT: PYTHON: ['C:\\Users\\annenskei\\Desktop\\testcod\\printpal-src\\electron-app\\python\\python312.zip', 'C:\\Users\\annenskei\\Desktop\\testcod\\printpal-src\\electron-app\\python', 'C:\\Users\\annenskei\\Desktop\\testcod\\printpal-src\\electron-app\\python\\Lib', 'C:\\Users\\annenskei\\Desktop\\testcod\\printpal-src\\electron-app\\python\\Lib\\site-packages']
+2026-04-10T11:09:48.176Z Python test exit code: 0
+2026-04-10T11:09:48.177Z PYTHONPATH: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\python;C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\python\Lib\site-packages;C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\filament-calculator
+2026-04-10T11:09:48.177Z Full command: "C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\python\python.exe" "C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\filament-calculator\app.py"
+2026-04-10T11:09:48.177Z CWD: C:\Users\annenskei\Desktop\testcod\printpal-src\electron-app\filament-calculator
+2026-04-10T11:09:48.184Z Will wait for Flask at: http://127.0.0.1:5000
+2026-04-10T11:09:48.184Z waitForServer: http://127.0.0.1:5000
+2026-04-10T11:09:48.188Z Server error: ECONNREFUSED
+2026-04-10T11:09:48.521Z [FLASK] * Serving Flask app 'app'
+ * Debug mode: off
+2026-04-10T11:09:48.549Z [FLASK ERR] WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+2026-04-10T11:09:48.690Z waitForServer: http://127.0.0.1:5000
+2026-04-10T11:09:48.749Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:48] "GET / HTTP/1.1" 200 -
+2026-04-10T11:09:48.750Z Server response: 200
+2026-04-10T11:09:48.751Z Flask server is up, loading URL...
+2026-04-10T11:09:48.810Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:48] "GET / HTTP/1.1" 200 -
+2026-04-10T11:09:48.826Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:48] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:09:48.848Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:48] "GET /static/style.css HTTP/1.1" 200 -
+2026-04-10T11:09:54.283Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:54] "GET /settings HTTP/1.1" 200 -
+2026-04-10T11:09:54.290Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:54] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:09:55.053Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:55] "GET /about HTTP/1.1" 200 -
+2026-04-10T11:09:55.060Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:55] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:09:57.382Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:57] "GET /printers/monitor HTTP/1.1" 200 -
+2026-04-10T11:09:57.389Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:57] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:09:58.014Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:58] "GET /filaments HTTP/1.1" 200 -
+2026-04-10T11:09:58.020Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:58] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:09:59.299Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:59] "GET /printers HTTP/1.1" 200 -
+2026-04-10T11:09:59.305Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:09:59] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:10:00.225Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:10:00] "GET / HTTP/1.1" 200 -
+2026-04-10T11:10:00.231Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:10:00] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -
+2026-04-10T11:10:01.185Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:10:01] "GET /printers/monitor HTTP/1.1" 200 -
+2026-04-10T11:10:01.192Z [FLASK ERR] 127.0.0.1 - - [10/Apr/2026 14:10:01] "GET /theme.css?preset=modern&theme=light&glass=1 HTTP/1.1" 200 -

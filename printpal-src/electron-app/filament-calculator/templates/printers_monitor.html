@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ _('monitor') }} - PrintPAL{% endblock %}
+{% block content %}
+{% if printers %}
+<div class="monitor-layout">
+    <div class="monitor-sidebar">
+        {% for p in printers %}
+        <div class="monitor-printer-btn {% if loop.first %}active{% endif %}" data-ip="{{ p.ip_address }}" onclick="selectPrinter(this)">
+            <div class="mp-name">{{ p.name }}</div>
+            <div class="mp-ip">{{ p.ip_address }}</div>
+        </div>
+        {% endfor %}
+        <div style="padding:0.5rem; display:flex; flex-direction:column; gap:0.35rem;">
+            <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-primary" style="width:100%;text-align:center;">{{ _('open_browser') }}</a>
+            {% for p in printers %}
+            {% if p.camera_ip %}
+            <a id="cam-link-{{ p.id }}" href="http://{{ p.camera_ip }}" target="_blank" class="btn btn-small btn-secondary" style="width:100%;text-align:center;" data-printer="{{ p.id }}">📷 {{ _('open_camera') }} {{ p.name }}</a>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    <div class="monitor-viewer">
+        {% for p in printers %}
+        <iframe class="monitor-iframe {% if loop.first %}active{% endif %}" id="iframe-{{ loop.index }}" src="http://{{ p.ip_address }}" title="{{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
+        {% endfor %}
+    </div>
+</div>
+<script>
+function selectPrinter(el) {
+    document.querySelectorAll('.monitor-printer-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    const ip = el.dataset.ip;
+    document.querySelectorAll('.monitor-iframe').forEach(f => f.classList.remove('active'));
+    const idx = Array.from(document.querySelectorAll('.monitor-printer-btn')).indexOf(el);
+    const iframe = document.getElementById('iframe-' + (idx + 1));
+    if (iframe) iframe.classList.add('active');
+    document.getElementById('direct-link').href = 'http://' + ip;
+    document.getElementById('direct-link').textContent = '{{ _('open_browser') }} ' + el.querySelector('.mp-name').textContent;
+}
+</script>
+{% else %}
+<div class="card">
+    <p class="empty-msg">{{ _('no_ip') }}. <a href="{{ url_for('printers') }}">{{ _('add_ip') }}</a></p>
+</div>
+{% endif %}
+{% endblock %}
