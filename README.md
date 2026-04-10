@@ -42,6 +42,15 @@
 - History export to CSV — for accountants
 - Built-in filament database from ShpoolkenDB
 
+
+<img width="1920" height="1032" alt="ddd" src="https://github.com/user-attachments/assets/e3046605-1480-4e7b-adb8-af3baecc63d8" />
+<img width="1920" height="1032" alt="base" src="https://github.com/user-attachments/assets/93a55682-500e-413b-a79b-604f16cf0b44" />
+<img width="1280" height="1032" alt="ыещ" src="https://github.com/user-attachments/assets/8894ad72-e5c5-4815-9811-8624825dda58" />
+<img width="1280" height="1032" alt="фы" src="https://github.com/user-attachments/assets/6afbe7db-a743-4fbd-b069-2d7c87e76bfc" />
+<img width="1280" height="1032" alt="зшг" src="https://github.com/user-attachments/assets/2b927e6a-3dfc-4bf7-b7aa-393ba7dc180e" />
+<img width="1280" height="1032" alt="settings" src="https://github.com/user-attachments/assets/c193d732-2227-4130-9a05-ffac145dc068" />
+
+
 ---
 
 ## Запуск / Quick Start
