@@ -1,0 +1,55 @@
+{
+  "name": "printpal",
+  "version": "1.3.0",
+  "description": "Filament tracker and 3D print cost calculator",
+  "author": "PrintPAL",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.printpal.app",
+    "productName": "PrintPAL",
+    "directories": {
+      "output": "dist6"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "loading.html",
+      "error.html",
+      "runner.py",
+      "filament-calculator/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "filament-calculator",
+        "to": "filament-calculator",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python",
+        "to": "python",
+        "filter": ["**/*"]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/python/**/*",
+      "**/filament-calculator/**/*"
+    ],
+    "win": {
+      "target": [{"target": "portable", "arch": ["x64"]}],
+      "icon": null
+    },
+    "portable": {
+      "artifactName": "PrintPAL.exe"
+    }
+  }
+}
