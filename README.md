@@ -5,7 +5,8 @@
 **EN** — Filament tracker and 3D print cost calculator.
 
 
-<img width="1280" height="1032" alt="dash" src="https://github.com/user-attachments/assets/7c37d0d5-5c94-441d-86ca-4ccbd872c8c2" />
+<img width="1280" height="800" alt="Capture" src="https://github.com/user-attachments/assets/e282ba5a-f9fc-4399-97ea-96a4d66656fc" />
+
 
 
 ---
@@ -26,13 +27,13 @@
 - Настраиваемый порядок вкладок. Перетащи как удобно
 - Экспорт истории в CSV
 
+<img width="1920" height="1032" alt="ddd" src="https://github.com/user-attachments/assets/0f643044-bb3e-4a39-abf0-745e1f00244e" />
+<img width="1280" height="1032" alt="ыещ" src="https://github.com/user-attachments/assets/dc605626-aa86-4ef1-953d-1d6b9c4445a3" />
+<img width="1280" height="1032" alt="фы" src="https://github.com/user-attachments/assets/4c4f3fc1-4d44-4e3f-ab2e-7064fbb0acde" />
+<img width="1280" height="1032" alt="зшг" src="https://github.com/user-attachments/assets/3eb13b48-9259-41b1-a8da-33b80139bb77" />
+<img width="1920" height="1032" alt="base" src="https://github.com/user-attachments/assets/fa07fbdb-d582-477a-bb68-5de757b97808" />
 
-<img width="1280" height="1032" alt="calc" src="https://github.com/user-attachments/assets/9597388a-35ed-4301-9bd3-2572cf5127c4" />
-<img width="1280" height="833" alt="web" src="https://github.com/user-attachments/assets/65d0bf9a-7027-4373-a662-b90e0d914911" />
-<img width="1280" height="1032" alt="settings" src="https://github.com/user-attachments/assets/8f74881f-b013-4f98-98f0-c17832fafad5" />
-<img width="1280" height="833" alt="print" src="https://github.com/user-attachments/assets/aa4db95d-1c5d-45d9-8d98-77a69f3c0a95" />
-<img width="1280" height="1032" alt="history" src="https://github.com/user-attachments/assets/bc2dee4e-b222-457d-878e-eac15426a14e" />
-<img width="1280" height="833" alt="filaments" src="https://github.com/user-attachments/assets/167021a1-6a67-4714-b0ed-37f1b800f18b" />
+
 
 
 
