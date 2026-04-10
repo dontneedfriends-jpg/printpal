@@ -1,8 +1,8 @@
 # PrintPAL
 
-Программа для учёта филамента и расчёта стоимости 3D-печати. Потому что считать на калькуляторе — это прошлый век.
+**RU** — Программа для учёта филамента и расчёта стоимости 3D-печати. Потому что считать на калькуляторе — это прошлый век.
 
-Filament tracker and 3D print cost calculator. Because calculators are so 1990s.
+**EN** — Filament tracker and 3D print cost calculator. Because calculators are so 1990s.
 
 > **Version 1.3.0**
 
@@ -10,7 +10,9 @@ Filament tracker and 3D print cost calculator. Because calculators are so 1990s.
 
 ---
 
-## Возможности
+## Возможности / Features
+
+**RU:**
 
 - Расчёт стоимости печати (филамент, электричество, износ, наценка)
 - Учёт остатков филамента с автоматическим списанием — меньше ручной работы
@@ -25,17 +27,24 @@ Filament tracker and 3D print cost calculator. Because calculators are so 1990s.
 - Экспорт истории в CSV — для бухгалтеров
 - Встроенная база филаментов из ShpoolkenDB
 
+**EN:**
+
+- Print cost calculation (filament, electricity, depreciation, markup)
+- Filament tracking with automatic write-off — less manual work
+- Calculation history with downloadable model files
+- Built-in printer web interface by IP — no need to switch windows
+- IP camera support
+- Maintenance hours tracking
+- Export/import filaments via JSON
+- 26 color themes (light/dark) — for perfectionists
+- Three languages: Russian, English, Spanish
+- Customizable tab order
+- History export to CSV — for accountants
+- Built-in filament database from ShpoolkenDB
+
 ---
 
-## Запуск
-
-### Готовый exe (рекомендуется)
-
-```
-dist6/win-unpacked/PrintPAL.exe
-```
-
-### Из исходников
+## Запуск / Quick Start
 
 ```bash
 # Python
@@ -46,78 +55,64 @@ pip install flask
 cd ..
 npm install
 
-# Запуск
+# Run
 npm start
 ```
 
 ---
 
-## Сборка
-
-### Windows
+## Сборка / Build
 
 ```bash
 npm run build:win
 ```
 
-Результат: `dist6/win-unpacked/PrintPAL.exe` (~180 MB)
+**RU:** Результат: `dist6/win-unpacked/PrintPAL.exe` (~180 MB)
 
-### Linux
-
-```bash
-cd electron-app
-npm install
-npx electron-builder --linux
-```
-
-### macOS
-
-```bash
-cd electron-app
-npm install
-npx electron-builder --mac
-```
+**EN:** Result: `dist6/win-unpacked/PrintPAL.exe` (~180 MB)
 
 ---
 
-## Технические детали
+## Технические детали / Technical Details
 
-### Стек
+### Stack / Стек
 
-- Backend: Python 3.12 / Flask
-- База данных: SQLite
-- Desktop: Electron 33
-- Frontend: HTML + CSS + Jinja2
+| Component | Technology |
+|-----------|------------|
+| Backend | Python 3.12 / Flask |
+| Database | SQLite |
+| Desktop | Electron 33 |
+| Frontend | HTML + CSS + Jinja2 |
 
-### База данных
+### Database / База данных
 
-4 таблицы: `printers`, `filaments`, `calculations`, `settings`.
+4 таблицы / tables: `printers`, `filaments`, `calculations`, `settings`.
 
-### Формула расчёта
+### Calculation formula / Формула расчёта
 
 ```
 total = base_rate + filament_cost + electricity + depreciation + markup
 ```
 
-### Темы
+### Themes / Темы
 
-26 тем: modern, retro, terminal, material, pastel, nord, dracula, ocean, sunset, gameboy, crt, neon, windows98, solarized, gruvbox, synthwave, monochrome, catppuccin, tokyonight, onedark, monokai, github, ayu, nightowl, cobalt2, horizon.
+26 тем / themes: modern, retro, terminal, material, pastel, nord, dracula, ocean, sunset, gameboy, crt, neon, windows98, solarized, gruvbox, synthwave, monochrome, catppuccin, tokyonight, onedark, monokai, github, ayu, nightowl, cobalt2, horizon.
 
-### Хранение данных
+### Data storage / Хранение данных
 
 - Dev: `filament-calculator/filament.db`
-- Windows packaged: `%APPDATA%\PrintPAL\data\filament.db`
+- Windows: `%APPDATA%\PrintPAL\data\filament.db`
 
 ---
 
-## Лицензия
+## Лицензия / License
 
 MIT
 
 ---
 
-## Авторы
+## Авторы / Authors
 
-Сделано с ❤️ и ☕
+Сделано с ❤️ и ☕ / Made with ❤️ and ☕
 
-База филаментов: [ShpoolkenDB](https://dontneedfriends-jpg.github.io/ShpoolkenDB/)
+База филаментов / Filament database: [ShpoolkenDB](https://dontneedfriends-jpg.github.io/ShpoolkenDB/)
