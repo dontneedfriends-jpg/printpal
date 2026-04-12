@@ -55,27 +55,28 @@ ipcMain.on("win-maximize", () => {
 ipcMain.on("win-close", () => mainWindow && mainWindow.close());
 
 function findPython() {
-  const candidates = ["python", "python3", "py"];
-  const localAppData = process.env.LOCALAPPDATA || "";
-  const progFiles = process.env.ProgramFiles || "C:\\Program Files";
-  for (const ver of ["Python314", "Python313", "Python312", "Python311", "Python310"]) {
-    candidates.push(path.join(localAppData, "Programs", ver, "python.exe"));
-    candidates.push(path.join(progFiles, ver, "python.exe"));
-    candidates.push(`C:\\${ver}\\python.exe`);
-  }
-  for (const cmd of candidates) {
-    try {
-      execSync(`"${cmd}" --version`, { stdio: "pipe", timeout: 2000 });
-      return cmd;
-    } catch (e) {}
+  if (app.isPackaged) {
+    const embeddedPython = path.join(path.dirname(process.execPath), "python", "python.exe");
+    if (fs.existsSync(embeddedPython)) {
+      return embeddedPython;
+    }
+    const resourcesPython = path.join(process.resourcesPath, "python", "python.exe");
+    if (fs.existsSync(resourcesPython)) {
+      return resourcesPython;
+    }
+  } else {
+    const devPython = path.join(__dirname, "electron-app", "python", "python.exe");
+    if (fs.existsSync(devPython)) {
+      return devPython;
+    }
   }
   return null;
 }
 
 function checkFlask(pythonCmd) {
   try {
-    execSync(`"${pythonCmd}" -c "import flask"`, { stdio: "pipe", timeout: 3000 });
-    return true;
+    const result = require("child_process").spawnSync(pythonCmd, ["-c", "import flask"], { stdio: "pipe", timeout: 3000 });
+    return result.status === 0;
   } catch (e) {
     return false;
   }
@@ -83,11 +84,10 @@ function checkFlask(pythonCmd) {
 
 function installFlask(pythonCmd, cwd) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(`"${pythonCmd}"`, ["-m", "pip", "install", "--quiet", "flask"], {
+    const proc = spawn(pythonCmd, ["-m", "pip", "install", "--quiet", "flask"], {
       cwd: cwd || process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
-      shell: true,
     });
     let output = "";
     proc.stdout.on("data", (d) => { output += d.toString(); });
@@ -121,7 +121,7 @@ function killFlask() {
 async function setupAndStart() {
   const isDev = !app.isPackaged;
   const basePath = isDev
-    ? path.join(__dirname, "filament-calculator")
+    ? path.join(__dirname, "electron-app", "filament-calculator")
     : path.join(process.resourcesPath, "filament-calculator");
 
   const pythonCmd = findPython();
@@ -146,14 +146,21 @@ async function setupAndStart() {
   }
 
   const scriptPath = path.join(basePath, "app.py");
-  const cmd = pythonCmd.includes(" ") ? `"${pythonCmd}"` : pythonCmd;
 
-  flaskProcess = spawn(cmd, [scriptPath], {
+  let pythonPath = path.dirname(pythonCmd);
+  let env = { ...process.env, PYTHONUNBUFFERED: "1" };
+  
+  if (app.isPackaged && pythonCmd.includes("python.exe")) {
+    const pythonDir = path.dirname(pythonCmd);
+    const sitePackages = path.join(pythonDir, "Lib", "site-packages");
+    env.PYTHONPATH = sitePackages + path.delimiter + pythonDir;
+  }
+
+  flaskProcess = spawn(pythonCmd, [scriptPath], {
     cwd: basePath,
-    env: { ...process.env, PYTHONUNBUFFERED: "1" },
+    env: env,
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
-    shell: true,
   });
 
   flaskProcess.stderr.on("data", (d) => {
