@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}PrintPAL{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2">
-    <link rel="stylesheet" href="{{ url_for('theme_css') }}?preset={{ request.cookies.get('preset', 'modern') }}&theme={{ request.cookies.get('theme', 'light') }}&glass={{ request.cookies.get('glass', '1') }}">
+    <link rel="stylesheet" href="{{ url_for('theme_css') }}?preset={{ request.cookies.get('preset', 'modern') }}&theme={{ request.cookies.get('theme', 'light') }}&glass={{ request.cookies.get('glass', '1') }}&v=2">
 </head>
 <body>
     <div class="app-layout">
@@ -15,15 +15,15 @@
                     <span class="titlebar-title">PrintPAL</span>
                 </div>
                 <div class="titlebar-controls">
-                    <button class="titlebar-btn" onclick="window.electronAPI?.minimize()">
-                        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6h8v1H2z" fill="currentColor"/></svg>
+                    <button class="titlebar-btn" onclick="window.electronAPI?.minimize()" aria-label="Minimize">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button class="titlebar-btn" onclick="window.electronAPI?.maximize()">
-                        <svg class="icon-maximize" width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-                        <svg class="icon-restore" width="12" height="12" viewBox="0 0 12 12" style="display:none"><path d="M2 4h8v7H2z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 4V2h8v8h-2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                    <button class="titlebar-btn" onclick="window.electronAPI?.maximize()" aria-label="Maximize">
+                        <svg class="icon-maximize" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                        <svg class="icon-restore" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                     </button>
-                    <button class="titlebar-btn titlebar-btn-close" onclick="window.electronAPI?.close()">
-                        <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <button class="titlebar-btn titlebar-btn-close" onclick="window.electronAPI?.close()" aria-label="Close">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
             </div>
@@ -39,7 +39,10 @@
                     <a href="{{ url_for('history') }}" data-endpoint="history" class="{% if request.endpoint == 'history' %}active{% endif %}">{{ _('nav_history') }}</a>
                     <a href="{{ url_for('settings') }}" data-endpoint="settings" class="{% if request.endpoint == 'settings' %}active{% endif %}">{{ _('nav_settings') }}</a>
                     <a href="{{ url_for('about') }}" data-endpoint="about" class="{% if request.endpoint == 'about' %}active{% endif %}">{{ _('about') }}</a>
-                    <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-toggle-btn">
+                        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                    </button>
                 </div>
             </nav>
         </div>

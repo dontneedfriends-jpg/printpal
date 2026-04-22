@@ -1,35 +1,181 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrintPAL — Ошибка</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a14; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#d8d8f0; overflow:hidden; user-select:none; }
-.logo { font-size:2rem; font-weight:800; background:linear-gradient(135deg,#6c8cff,#8b5cf6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:1rem; }
-.msg { text-align:center; max-width:500px; color:#7878a0; font-size:0.9rem; line-height:1.6; }
-.msg strong { color:#f87171; }
-.code { background:#1a1a2e; padding:0.2rem 0.4rem; border-radius:4px; font-size:0.85rem; color:#8b5cf6; word-break:break-all; }
-.retry-btn { margin-top:1.5rem; padding:0.75rem 1.5rem; background:linear-gradient(135deg,#6c8cff,#8b5cf6); border:none; border-radius:8px; color:#fff; font-size:0.9rem; cursor:pointer; -webkit-app-region:no-drag; }
-.retry-btn:hover { opacity:0.9; }
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, sans-serif;
+  background: #0a0a14;
+  color: #d8d8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(ellipse at 20% 20%, #2a1a1a 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, #1a0a0a 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, #0f0f25 0%, transparent 70%);
+  animation: bgShift 20s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+@keyframes bgShift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(2%, -2%) rotate(1deg); }
+  66% { transform: translate(-1%, 1%) rotate(-0.5deg); }
+  100% { transform: translate(1%, -1%) rotate(0.5deg); }
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 3rem;
+  border-radius: 20px;
+  background: rgba(35, 20, 20, 0.72);
+  backdrop-filter: blur(40px) saturate(1.2);
+  -webkit-backdrop-filter: blur(40px) saturate(1.2);
+  border: 1px solid rgba(255, 100, 100, 0.1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  max-width: 480px;
+  width: 90%;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0.025;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px;
+  z-index: 0;
+}
+
+.card > * { position: relative; z-index: 1; }
+
+.icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(231, 76, 60, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(231, 76, 60, 0.2);
+}
+
+.icon svg {
+  width: 28px;
+  height: 28px;
+  color: #e74c3c;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #fff 0%, #b0b0d0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+
+.msg {
+  color: #7878a0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.msg strong {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.code {
+  display: block;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #8b5cf6;
+  word-break: break-all;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: left;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.retry-btn {
+  margin-top: 0.5rem;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #4361ee, #8b5cf6);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 16px rgba(67, 97, 238, 0.35);
+}
+
+.retry-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(67, 97, 238, 0.45);
+}
+
+.retry-btn:active {
+  transform: translateY(0);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .card { background: #1a0a0a; }
+}
 </style>
 </head>
 <body>
-<div class="logo">PrintPAL</div>
-<div class="msg">
-  <strong>Ошибка запуска Flask</strong><br><br>
-  Проверьте консоль разработчика (F12)<br><br>
-  Пути (смотрите логи выше):<br>
-  <span id="debug"></span>
+<div class="card">
+  <div class="icon">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  </div>
+  <div class="logo">PrintPAL</div>
+  <div class="msg">
+    <strong>Ошибка запуска</strong><br><br>
+    Не удалось запустить сервер приложения. Проверьте логи или повторите попытку.<br>
+    <span class="code" id="debug">Запустите приложение снова и откройте консоль (F12)</span>
+  </div>
+  <button class="retry-btn" onclick="location.reload()">Повторить попытку</button>
 </div>
-<button class="retry-btn" onclick="location.reload()">Повторить попытку</button>
 <script>
 window.onerror = function(msg, url, line) {
-  document.getElementById('debug').innerHTML += '<br>Error: ' + msg + ' line:' + line;
+  document.getElementById('debug').textContent += '\nError: ' + msg + ' line:' + line;
 };
-// Try to get info from console
-setTimeout(function() {
-  document.getElementById('debug').innerHTML = 'Запустите приложение снова и откройте консоль (F12)';
-}, 1000);
 </script>
 </body>
 </html>

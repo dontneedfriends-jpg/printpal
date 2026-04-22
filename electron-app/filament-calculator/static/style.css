@@ -3,19 +3,19 @@
     --bg-gradient-1: #c3cfe2;
     --bg-gradient-2: #e8ecf1;
     --bg-gradient-3: #f5f0eb;
-    --glass-bg: rgba(255, 255, 255, 0.55);
-    --glass-bg-hover: rgba(255, 255, 255, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.6);
-    --glass-border-strong: rgba(255, 255, 255, 0.85);
+    --glass-bg: rgba(255, 255, 255, 0.77);
+    --glass-bg-hover: rgba(255, 255, 255, 0.83);
+    --glass-border: rgba(255, 255, 255, 0.64);
+    --glass-border-strong: rgba(255, 255, 255, 0.88);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
     --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.12);
-    --glass-blur: 16px;
-    --bg-card: rgba(255, 255, 255, 0.6);
-    --bg-input: rgba(255, 255, 255, 0.7);
+    --glass-blur: 24px;
+    --bg-card: rgba(255, 255, 255, 0.80);
+    --bg-input: rgba(255, 255, 255, 0.85);
     --bg-navbar: rgba(30, 30, 60, 0.85);
     --bg-table-header: rgba(0, 0, 0, 0.03);
     --bg-table-hover: rgba(0, 0, 0, 0.04);
-    --bg-modal-overlay: rgba(0, 0, 0, 0.4);
+    --bg-modal-overlay: rgba(0, 0, 0, 0.35);
     --bg-cost-breakdown: rgba(67, 97, 238, 0.06);
     --bg-warning: rgba(255, 193, 7, 0.15);
     --bg-row-low: rgba(231, 76, 60, 0.06);
@@ -59,19 +59,19 @@
     --bg-gradient-1: #0a0a1a;
     --bg-gradient-2: #0f0f20;
     --bg-gradient-3: #12122a;
-    --glass-bg: rgba(25, 25, 50, 0.6);
-    --glass-bg-hover: rgba(30, 30, 60, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-border-strong: rgba(255, 255, 255, 0.15);
+    --glass-bg: rgba(25, 25, 50, 0.78);
+    --glass-bg-hover: rgba(30, 30, 60, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --glass-border-strong: rgba(255, 255, 255, 0.18);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
-    --glass-blur: 20px;
-    --bg-card: rgba(20, 20, 45, 0.65);
-    --bg-input: rgba(30, 30, 60, 0.7);
+    --glass-blur: 32px;
+    --bg-card: rgba(20, 20, 45, 0.78);
+    --bg-input: rgba(30, 30, 60, 0.85);
     --bg-navbar: rgba(8, 8, 20, 0.9);
     --bg-table-header: rgba(255, 255, 255, 0.03);
     --bg-table-hover: rgba(255, 255, 255, 0.04);
-    --bg-modal-overlay: rgba(0, 0, 0, 0.7);
+    --bg-modal-overlay: rgba(0, 0, 0, 0.55);
     --bg-cost-breakdown: rgba(67, 97, 238, 0.08);
     --bg-warning: rgba(255, 193, 7, 0.1);
     --bg-row-low: rgba(231, 76, 60, 0.1);
@@ -100,6 +100,98 @@
     --accent-hover: #5c7cff;
     --accent-light: rgba(108, 140, 255, 0.15);
     --glow-accent: rgba(108, 140, 255, 0.3);
+}
+
+/* Microsoft Acrylic Fluent surfaces */
+.card,
+.stat-card,
+.filament-card,
+.modal-box,
+.modal-content,
+.toast,
+.hist-row,
+.monitor-printer-btn {
+    backdrop-filter: var(--glass-backdrop);
+    -webkit-backdrop-filter: var(--glass-backdrop);
+    position: relative;
+}
+
+/* Noise texture overlay — main surfaces */
+.card::before,
+.modal-box::before,
+.modal-content::before,
+.toast::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.025;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px;
+    border-radius: inherit;
+    z-index: 0;
+}
+
+/* Ensure content renders above noise */
+.card > *,
+.modal-box > *,
+.modal-content > *,
+.toast > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Header acrylic */
+.titlebar,
+.navbar {
+    backdrop-filter: blur(20px) saturate(1.1);
+    -webkit-backdrop-filter: blur(20px) saturate(1.1);
+    position: relative;
+}
+
+/* Noise on navbar/titlebar */
+.titlebar::after,
+.navbar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.02;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px;
+    z-index: 0;
+}
+
+.titlebar > *,
+.navbar > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Background acrylic for transient UI (modal overlay) */
+.modal-overlay {
+    background: var(--bg-modal-overlay);
+    backdrop-filter: blur(8px) saturate(1.1);
+    -webkit-backdrop-filter: blur(8px) saturate(1.1);
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(1px)) {
+    .card,
+    .stat-card,
+    .filament-card,
+    .modal-box,
+    .modal-content,
+    .toast,
+    .hist-row,
+    .monitor-printer-btn {
+        background: var(--bg-card);
+    }
+    .modal-overlay {
+        background: var(--bg-modal-overlay);
+    }
 }
 
 * {
@@ -696,11 +788,15 @@ h3 {
     background: var(--glass-bg);
     color: var(--text);
     border: 1px solid var(--border);
+    backdrop-filter: blur(12px) saturate(1.1);
+    -webkit-backdrop-filter: blur(12px) saturate(1.1);
 }
 
 .btn-secondary:hover {
     background: var(--glass-bg-hover);
     border-color: var(--glass-border-strong);
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
 
 .btn-success {

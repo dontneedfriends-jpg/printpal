@@ -224,7 +224,10 @@ def theme_css():
     s = get_settings()
     preset_name = request.args.get("preset", s.get("theme_preset", "modern"))
     theme = request.args.get("theme", "light")
-    glass = request.args.get("glass", s.get("glass_mode", 1))
+    try:
+        glass = bool(int(request.args.get("glass", s.get("glass_mode", 1))))
+    except (ValueError, TypeError):
+        glass = True
 
     if preset_name not in PRESETS:
         preset_name = "modern"
@@ -243,6 +246,9 @@ def theme_css():
         lines.append("    --glass-shadow: none;")
         lines.append("    --glass-shadow-lg: none;")
         lines.append("    --glass-blur: 0px;")
+        lines.append("    --glass-backdrop: none;")
+    else:
+        lines.append("    --glass-backdrop: blur(var(--glass-blur)) saturate(1.15);")
 
     lines.append("}")
     return Response("\n".join(lines), mimetype="text/css")

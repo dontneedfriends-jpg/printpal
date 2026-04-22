@@ -109,8 +109,12 @@ function toggleTheme() {
 }
 
 function updateThemeIcon(theme) {
-    const btn = document.querySelector('.theme-toggle');
-    if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    const moon = document.querySelector('.icon-moon');
+    const sun = document.querySelector('.icon-sun');
+    if (moon && sun) {
+        moon.style.display = theme === 'dark' ? 'none' : 'block';
+        sun.style.display = theme === 'dark' ? 'block' : 'none';
+    }
 }
 
 if (window.electronAPI) {
