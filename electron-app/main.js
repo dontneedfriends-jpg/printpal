@@ -4,6 +4,27 @@ const { spawn, execSync } = require("child_process");
 const http = require("http");
 const fs = require("fs");
 
+const CONFIG = {
+  window: {
+    width: 1280,
+    height: 800,
+    minWidth: 900,
+    minHeight: 600,
+  },
+  flask: {
+    host: process.env.FLASK_HOST || "127.0.0.1",
+    port: parseInt(process.env.FLASK_PORT, 10) || 5000,
+    maxRetries: 30,
+    retryInterval: 500,
+  },
+  timeouts: {
+    kill: 5000,
+    sigkillDelay: 2000,
+    appExit: 500,
+    startupDelay: 2000,
+  },
+};
+
 let logFile;
 
 function log(...args) {
@@ -44,10 +65,10 @@ log("Creating window function...");
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    width: CONFIG.window.width,
+    height: CONFIG.window.height,
+    minWidth: CONFIG.window.minWidth,
+    minHeight: CONFIG.window.minHeight,
     title: "PrintPAL",
     frame: false,
     show: false,
@@ -57,7 +78,6 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       nodeEnv: "production",
-      webSecurity: false,
     },
   });
 
@@ -97,7 +117,7 @@ function killFlask() {
     log("Killing Flask process...");
     if (process.platform === "win32") {
       try {
-        execSync(`taskkill /F /T /FI "IMAGENAME eq python.exe"`, { stdio: "pipe", timeout: 5000 });
+        execSync(`taskkill /F /T /PID ${flaskProcess.pid}`, { stdio: "pipe", timeout: CONFIG.timeouts.kill });
       } catch (e) { 
         log("kill error:", e.message); 
       }
@@ -107,8 +127,8 @@ function killFlask() {
       if (!flaskProcess.killed) {
         flaskProcess.kill("SIGTERM");
         setTimeout(() => {
-          if (!flaskProcess.killed) flaskProcess.kill("SIGKILL");
-        }, 2000);
+          if (flaskProcess && !flaskProcess.killed) flaskProcess.kill("SIGKILL");
+        }, CONFIG.timeouts.sigkillDelay);
       }
     }
     flaskProcess = null;
@@ -170,7 +190,9 @@ async function setupAndStart() {
     ...process.env, 
     PYTHONUNBUFFERED: "1", 
     PATH: newPath,
-    PYTHONPATH: pythonDir + path.delimiter + pythonPath + path.delimiter + basePath
+    PYTHONPATH: pythonDir + path.delimiter + pythonPath + path.delimiter + basePath,
+    FLASK_HOST: CONFIG.flask.host,
+    FLASK_PORT: String(CONFIG.flask.port),
   };
 
   // Test python first
@@ -206,9 +228,9 @@ async function setupAndStart() {
     flaskProcess.on("close", () => { flaskProcess = null; });
     flaskProcess.on("error", (e) => { log("[SPAWN ERR]", e); flaskProcess = null; });
 
-    const url = "http://127.0.0.1:5000";
+    const url = `http://${CONFIG.flask.host}:${CONFIG.flask.port}`;
     log("Will wait for Flask at:", url);
-    waitForServer(url, 30, 500, () => {
+    waitForServer(url, CONFIG.flask.maxRetries, CONFIG.flask.retryInterval, () => {
       log("Flask server is up, loading URL...");
       mainWindow.loadURL(url);
     }, () => {
@@ -238,14 +260,14 @@ app.whenReady().then(() => {
     setupAndStart().catch((e) => {
       console.error("Error:", e);
     });
-  }, 2000);
+  }, CONFIG.timeouts.startupDelay);
   
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
 app.on("window-all-closed", () => {
   try { killFlask(); } catch(e) { log("window-all-closed error:", e.message); }
-  setTimeout(() => app.exit(0), 500);
+  setTimeout(() => app.exit(0), CONFIG.timeouts.appExit);
 });
 
 app.on("before-quit", () => { 

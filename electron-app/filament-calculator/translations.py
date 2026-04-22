@@ -165,6 +165,12 @@ T = {
         "about_license_text": "MIT License — делай что хочешь, только не пытайся продать это как своё.",
         "about_made_with": "Сделано с ❤️, ☕ и немного с 🧠",
         "about_easter_egg": "Ты дочитал до конца? Нажми на принтер ещё раз! 🔥",
+        "select_printer": "Выберите принтер",
+        "printer_not_found": "Принтер не найден",
+        "file_not_selected": "Файл не выбран",
+        "json_read_error": "Ошибка чтения JSON",
+        "invalid_file_format": "Неверный формат файла",
+        "imported_count": "Импортировано",
     },
     "en": {
         "app_name": "PrintPAL",
@@ -333,6 +339,12 @@ T = {
         "about_license_text": "MIT License — do whatever you want, just don't try to sell it as your own.",
         "about_made_with": "Made with ❤️, ☕ and a bit of 🧠",
         "about_easter_egg": "You read to the end? Click the printer again! 🔥",
+        "select_printer": "Select printer",
+        "printer_not_found": "Printer not found",
+        "file_not_selected": "File not selected",
+        "json_read_error": "JSON read error",
+        "invalid_file_format": "Invalid file format",
+        "imported_count": "Imported",
     },
     "es": {
         "app_name": "PrintPAL",
@@ -501,6 +513,12 @@ T = {
         "about_license_text": "MIT License — haz lo que quieras, solo no intentes venderlo como si fuera tuyo.",
         "about_made_with": "Hecho con ❤️, ☕ y un poco de 🧠",
         "about_easter_egg": "¿Llegaste hasta el final? ¡Dale clic al impresor otra vez! 🔥",
+        "select_printer": "Seleccionar impresora",
+        "printer_not_found": "Impresora no encontrada",
+        "file_not_selected": "Archivo no seleccionado",
+        "json_read_error": "Error al leer JSON",
+        "invalid_file_format": "Formato de archivo inválido",
+        "imported_count": "Importados",
     },
 }
 

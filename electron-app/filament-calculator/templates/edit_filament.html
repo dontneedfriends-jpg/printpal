@@ -1,36 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Редактировать филамент - PrintPAL{% endblock %}
+{% block title %}{{ _('edit_filament') }} - PrintPAL{% endblock %}
 {% block content %}
-<h1>Редактировать филамент</h1>
+<h1>{{ _('edit_filament') }}</h1>
 <div class="card">
     <form method="POST" action="{{ url_for('edit_filament', id=filament.id) }}" class="form-grid">
         <div class="form-group">
-            <label for="name">Название</label>
+            <label for="name">{{ _('name') }}</label>
             <input type="text" id="name" name="name" value="{{ filament.name }}" required>
         </div>
         <div class="form-group">
-            <label for="filament_type">Тип</label>
+            <label for="filament_type">{{ _('filament_type') }}</label>
             <select id="filament_type" name="filament_type" required>
-                {% for t in ["PLA", "PLA+", "PETG", "ABS", "TPU", "Nylon", "ASA", "PC", "Другой"] %}
+                {% for t in ["PLA", "PLA+", "PETG", "ABS", "TPU", "Nylon", "ASA", "PC", _('other')] %}
                 <option value="{{ t }}" {% if filament.filament_type == t %}selected{% endif %}>{{ t }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
-            <label for="color">Цвет</label>
+            <label for="color">{{ _('color') }}</label>
             <input type="text" id="color" name="color" value="{{ filament.color }}" required>
         </div>
         <div class="form-group">
-            <label for="spool_weight_g">Вес катушки (г)</label>
+            <label for="spool_weight_g">{{ _('spool_weight') }}</label>
             <input type="number" id="spool_weight_g" name="spool_weight_g" step="1" value="{{ filament.spool_weight_g }}" required>
         </div>
         <div class="form-group">
-            <label for="spool_price">Цена катушки (руб)</label>
+            <label for="spool_price">{{ _('spool_price') }}</label>
             <input type="number" id="spool_price" name="spool_price" step="0.01" value="{{ filament.spool_price }}" required>
         </div>
         <div class="form-group form-actions">
-            <button type="submit" class="btn btn-primary">Сохранить</button>
-            <a href="{{ url_for('filaments') }}" class="btn btn-secondary">Отмена</a>
+            <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
+            <a href="{{ url_for('filaments') }}" class="btn btn-secondary">{{ _('cancel') }}</a>
         </div>
     </form>
 </div>

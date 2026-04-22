@@ -1,32 +1,10 @@
 import sqlite3
 import os
+import logging
 from config import DATABASE
+from utils import safe_float, safe_int
 
-def safe_float(value, default=0.0, min_val=None, max_val=None):
-    try:
-        result = float(value)
-        if result < 0:
-            return default
-        if min_val is not None and result < min_val:
-            return default
-        if max_val is not None and result > max_val:
-            return max_val
-        return result
-    except (TypeError, ValueError):
-        return default
-
-def safe_int(value, default=0, min_val=None, max_val=None):
-    try:
-        result = int(value)
-        if result < 0:
-            return default
-        if min_val is not None and result < min_val:
-            return default
-        if max_val is not None and result > max_val:
-            return max_val
-        return result
-    except (TypeError, ValueError):
-        return default
+logger = logging.getLogger(__name__)
 
 _db_initialized = False
 
@@ -117,7 +95,7 @@ def init_db():
             conn.execute("ALTER TABLE printers ADD COLUMN maintenance_hours REAL DEFAULT 0")
         if "camera_ip" not in columns:
             conn.execute("ALTER TABLE printers ADD COLUMN camera_ip TEXT DEFAULT ''")
-    except Exception as e:
+    except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration printers columns: {e}")
 
     try:
@@ -128,7 +106,7 @@ def init_db():
             conn.execute("ALTER TABLE calculations ADD COLUMN model_orig_name TEXT DEFAULT ''")
         if "filament_data" not in columns:
             conn.execute("ALTER TABLE calculations ADD COLUMN filament_data TEXT DEFAULT ''")
-    except Exception as e:
+    except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration calculations columns: {e}")
 
     try:
@@ -141,7 +119,7 @@ def init_db():
             conn.execute("ALTER TABLE filaments ADD COLUMN color_hex TEXT DEFAULT ''")
         if "barcode" not in columns:
             conn.execute("ALTER TABLE filaments ADD COLUMN barcode TEXT DEFAULT ''")
-    except Exception as e:
+    except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration filaments columns: {e}")
 
     conn.commit()

@@ -61,8 +61,25 @@
 <div id="shpoolken-list"></div>
 {% endif %}
 
+<div id="sync-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="text-align:center; max-width:420px;">
+        <div class="sync-spinner">
+            <svg viewBox="0 0 50 50" width="48" height="48">
+                <circle cx="25" cy="25" r="20" fill="none" stroke="var(--glass-border)" stroke-width="4"></circle>
+                <circle cx="25" cy="25" r="20" fill="none" stroke="var(--accent)" stroke-width="4" stroke-dasharray="80" stroke-dashoffset="60" stroke-linecap="round" style="transform-origin:center; animation: syncSpin 1s linear infinite;"></circle>
+            </svg>
+        </div>
+        <h3 style="margin:1rem 0 0.25rem; color:var(--text);">{{ _('shpoolken_syncing') }}</h3>
+        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.25rem;">Загружаем каталог с GitHub...</p>
+        <div class="sync-progress-bg">
+            <div class="sync-progress-bar"></div>
+        </div>
+        <p class="sync-status-text" style="color:var(--text-muted); font-size:0.8rem; margin-top:0.75rem;">Получаем список файлов</p>
+    </div>
+</div>
+
 <div id="add-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-box">
+    <div class="modal-box modal-wide">
         <div class="modal-header">
             <h3>{{ _('shpoolken_add_to_printpal') }}</h3>
             <button class="modal-close" onclick="closeAddModal()">✕</button>
@@ -95,22 +112,39 @@ var currentResults = [];
 function syncDatabase() {
     var btn = event.target;
     btn.disabled = true;
-    btn.textContent = '{{ _('shpoolken_syncing') }}';
+    var overlay = document.getElementById('sync-overlay');
+    var statusText = overlay.querySelector('.sync-status-text');
+    overlay.style.display = 'flex';
+    
+    var steps = [
+        'Получаем список файлов...',
+        'Скачиваем данные...',
+        'Обрабатываем филаменты...',
+        'Сохраняем в базу...'
+    ];
+    var stepIdx = 0;
+    statusText.textContent = steps[0];
+    var stepInterval = setInterval(function() {
+        stepIdx = (stepIdx + 1) % steps.length;
+        statusText.textContent = steps[stepIdx];
+    }, 1800);
     
     fetch('/shpoolken/sync', {method: 'POST'})
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            clearInterval(stepInterval);
             if (data.success) {
                 location.reload();
             } else {
+                overlay.style.display = 'none';
                 btn.disabled = false;
-                btn.textContent = '{{ _('shpoolken_sync') }}';
                 showToast('Error: ' + (data.error || 'Unknown'), 'error');
             }
         })
         .catch(function(err) {
+            clearInterval(stepInterval);
+            overlay.style.display = 'none';
             btn.disabled = false;
-            btn.textContent = '{{ _('shpoolken_sync') }}';
             showToast('Error: ' + err, 'error');
         });
 }
@@ -332,6 +366,12 @@ function bulkAddSelected() {
     
     modal.querySelector('form').action = '{{ url_for("shpoolken_bulk_add") }}';
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('shpoolken-list')) {
+        searchFilaments();
+    }
+});
 </script>
 
 <style>
@@ -480,14 +520,38 @@ function bulkAddSelected() {
     font-weight: 500;
 }
 
-.modal-overlay { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999; }
-.modal-box { background:var(--bg-card); border:1px solid var(--glass-border); border-radius:16px; padding:1.5rem; width:98%; max-width:1000px; box-shadow:0 16px 48px rgba(0,0,0,0.3); animation:modalIn 0.2s ease-out; }
-@keyframes modalIn { from{transform:scale(0.95);opacity:0} to{transform:scale(1);opacity:1} }
-.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
-.modal-header h3 { margin:0; }
-.modal-close { background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer; padding:0.25rem 0.5rem; border-radius:6px; }
-.modal-close:hover { background:var(--bg-filament-color); color:var(--text); }
-.modal-form .form-group { margin-bottom:0.75rem; }
-.modal-actions { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem; }
+@keyframes syncSpin {
+    to { transform: rotate(360deg); }
+}
+
+.sync-spinner {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.sync-progress-bg {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-table-header);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.sync-progress-bar {
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-hover), var(--accent));
+    background-size: 200% 100%;
+    border-radius: 3px;
+    animation: syncShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes syncShimmer {
+    0% { transform: translateX(-150%); }
+    100% { transform: translateX(250%); }
+}
+
 </style>
 {% endblock %}
