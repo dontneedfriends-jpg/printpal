@@ -3,8 +3,14 @@
 {% block content %}
 <h1>{{ _('history') }}</h1>
 
-<div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+<div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
     <input type="text" id="hist-search" placeholder="{{ _('search_hist') }}" style="flex:1; min-width:200px; padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); color:var(--text); font-size:0.9rem;" oninput="filterHistory()">
+    <select onchange="location.href='?client_id='+this.value" style="padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); color:var(--text); font-size:0.9rem;">
+        <option value="">Все клиенты</option>
+        {% for cl in clients %}
+        <option value="{{ cl.id }}" {% if client_filter|string == cl.id|string %}selected{% endif %}>{{ cl.name }}</option>
+        {% endfor %}
+    </select>
     <button class="btn btn-secondary" id="btn-select-mode" onclick="toggleSelectMode()">☐ {{ _('select') }}</button>
     <a href="{{ url_for('export_history') }}" class="btn btn-primary" style="white-space:nowrap;">📥 CSV</a>
     <a href="{{ url_for('export_history_excel') }}" class="btn btn-primary" style="white-space:nowrap;">📊 Excel</a>
@@ -32,6 +38,9 @@
             </div>
             <div class="hist-details">
                 <span class="hist-tag">{{ c.printer_name }}</span>
+                {% if c.client_name %}
+                <span class="hist-tag" style="background:var(--accent-light); color:var(--accent);">👤 {{ c.client_name }}</span>
+                {% endif %}
                 {% if c.filament_data %}
                     {% set filaments = c.filament_data|from_json %}
                     {% for f in filaments %}

@@ -118,6 +118,34 @@
 
 <div class="card">
     <div class="settings-section">
+        <h3>Статистика</h3>
+        <div class="settings-row">
+            <span>Среднее время печати</span>
+            <strong>{{ "%.1f"|format(avg_time or 0) }} ч</strong>
+        </div>
+        <div class="settings-row">
+            <span>Самый тяжёлый заказ</span>
+            <strong>{% if heaviest %}{{ heaviest.model_name }} ({{ "%.0f"|format(heaviest.weight_g) }} г){% else %}—{% endif %}</strong>
+        </div>
+        <div class="settings-row">
+            <span>Самый дорогой заказ</span>
+            <strong>{% if most_expensive %}{{ most_expensive.model_name }} ({{ "%.2f"|format(most_expensive.total) }} {{ _('rub') }}){% else %}—{% endif %}</strong>
+        </div>
+        {% if top_clients %}
+        <div style="margin-top:0.75rem;">
+            <span style="font-size:0.85rem; color:var(--text-muted);">Топ клиентов по обороту:</span>
+            <ol style="margin:0.4rem 0 0 1.2rem; font-size:0.88rem;">
+                {% for c in top_clients %}
+                <li>{{ c.name or 'Без клиента' }} — {{ "%.2f"|format(c.total) }} {{ _('rub') }}</li>
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="settings-section">
         <h3>{{ _('data') }}</h3>
         <div class="settings-row">
             <span>{{ _('total_calcs') }}</span>

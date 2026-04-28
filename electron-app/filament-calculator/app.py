@@ -286,6 +286,7 @@ from routes.calculator import calculator_bp
 from routes.settings import settings_bp
 from routes.history import history_bp
 from routes.shpoolken import shpoolken_bp
+from routes.clients import clients_bp
 
 app.register_blueprint(printers_bp)
 app.register_blueprint(filaments_bp)
@@ -293,6 +294,7 @@ app.register_blueprint(calculator_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(history_bp)
 app.register_blueprint(shpoolken_bp)
+app.register_blueprint(clients_bp)
 
 # Build endpoint alias map for backward-compatible url_for in templates
 _endpoint_aliases = {}

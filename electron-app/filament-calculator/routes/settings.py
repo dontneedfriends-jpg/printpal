@@ -16,6 +16,17 @@ def settings():
     db = get_db()
     calc_count = db.execute("SELECT COUNT(*) as cnt FROM calculations").fetchone()["cnt"]
     total_used = db.execute("SELECT COALESCE(SUM(weight_g), 0) as total FROM calculations").fetchone()["total"]
+    avg_time = db.execute("SELECT AVG(print_time_hours) as avg FROM calculations").fetchone()["avg"]
+    top_clients = db.execute("""
+        SELECT c.name, COALESCE(SUM(cal.total_cost), 0) as total
+        FROM calculations cal
+        LEFT JOIN clients c ON cal.client_id = c.id
+        GROUP BY cal.client_id
+        ORDER BY total DESC
+        LIMIT 5
+    """).fetchall()
+    heaviest = db.execute("SELECT model_name, weight_g FROM calculations ORDER BY weight_g DESC LIMIT 1").fetchone()
+    most_expensive = db.execute("SELECT model_name, total_cost as total FROM calculations ORDER BY total_cost DESC LIMIT 1").fetchone()
     printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
     db.close()
 
@@ -46,6 +57,10 @@ def settings():
         },
         calc_count=calc_count,
         total_filament_used=total_used,
+        avg_time=avg_time,
+        top_clients=top_clients,
+        heaviest=heaviest,
+        most_expensive=most_expensive,
         current_theme=current_theme,
         current_preset=current_preset,
         glass_mode=glass_mode,

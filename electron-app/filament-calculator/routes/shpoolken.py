@@ -24,21 +24,7 @@ def check_internet():
 
 @shpoolken_bp.route("/shpoolken")
 def shpoolken():
-    init_shpoolken_db()
-    has_internet = check_internet()
-    loaded = is_shpoolken_loaded()
-    manufacturers = get_shpoolken_manufacturers() if loaded else []
-    materials = get_shpoolken_materials() if loaded else []
-    stats = get_shpoolken_stats() if loaded else {}
-    return render_template(
-        "shpoolken.html",
-        loaded=loaded,
-        has_internet=has_internet,
-        manufacturers=manufacturers,
-        materials=materials,
-        stats=stats,
-        lang=request.lang,
-    )
+    return redirect(url_for("filaments.filaments") + "#shpoolken")
 
 
 @shpoolken_bp.route("/shpoolken/sync", methods=["POST"])

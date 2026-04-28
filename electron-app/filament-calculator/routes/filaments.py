@@ -14,7 +14,23 @@ def filaments():
     filament_list = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
     db.close()
     filaments_json = [dict(f) for f in filament_list]
-    return render_template("filaments.html", filaments=filament_list, filaments_json=filaments_json, lang=request.lang)
+
+    from database import init_shpoolken_db, is_shpoolken_loaded, get_shpoolken_manufacturers, get_shpoolken_materials, get_shpoolken_stats
+    init_shpoolken_db()
+    loaded = is_shpoolken_loaded()
+    manufacturers = get_shpoolken_manufacturers() if loaded else []
+    materials = get_shpoolken_materials() if loaded else []
+    stats = get_shpoolken_stats() if loaded else {}
+    return render_template(
+        "filaments.html",
+        filaments=filament_list,
+        filaments_json=filaments_json,
+        shpoolken_loaded=loaded,
+        shpoolken_manufacturers=manufacturers,
+        shpoolken_materials=materials,
+        shpoolken_stats=stats,
+        lang=request.lang,
+    )
 
 
 @filaments_bp.route("/filaments/add", methods=["POST"])
@@ -77,6 +93,8 @@ def restore_filament():
     return "ok", 200
 
 
+import re
+
 @filaments_bp.route("/filaments/<int:id>/copy", methods=["POST"])
 def copy_filament(id):
     db = get_db()
@@ -85,9 +103,25 @@ def copy_filament(id):
         db.close()
         return "not found", 404
     data = dict(row)
+    base_name = re.sub(r'\s*#\d+$', '', data["name"])
+    base_name = re.sub(r'\s*\(копия\)$', '', base_name)
+    
+    existing = db.execute(
+        "SELECT name FROM filaments WHERE name LIKE ? ESCAPE '|'",
+        (base_name.replace("%", "|%").replace("_", "|_") + " #%",)
+    ).fetchall()
+    
+    max_num = 0
+    for r in existing:
+        m = re.search(r' #(\d+)$', r["name"])
+        if m:
+            max_num = max(max_num, int(m.group(1)))
+    
+    new_name = base_name + " #" + str(max_num + 1)
+    
     db.execute(
         "INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, density, diameter, color_hex, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (data.get("manufacturer", ""), data["name"] + " (копия)", data["filament_type"], data["color"], data["spool_weight_g"], data["spool_price"], data["remaining_g"], data.get("density", 0), data.get("diameter", 1.75), data.get("color_hex", ""), data.get("barcode", ""))
+        (data.get("manufacturer", ""), new_name, data["filament_type"], data["color"], data["spool_weight_g"], data["spool_price"], data["remaining_g"], data.get("density", 0), data.get("diameter", 1.75), data.get("color_hex", ""), data.get("barcode", ""))
     )
     db.commit()
     db.close()

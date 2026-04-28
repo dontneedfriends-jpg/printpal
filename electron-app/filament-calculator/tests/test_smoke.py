@@ -13,7 +13,7 @@ import pytest
 ])
 def test_smoke_get_routes(client, route):
     """Smoke test: all main GET routes should return 200."""
-    resp = client.get(route)
+    resp = client.get(route, follow_redirects=True)
     assert resp.status_code == 200, f"Route {route} returned {resp.status_code}"
 
 def test_404_handler(client):

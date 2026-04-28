@@ -90,3 +90,32 @@ def printers_monitor():
     printer_list = db.execute("SELECT * FROM printers WHERE ip_address IS NOT NULL AND ip_address != '' ORDER BY name").fetchall()
     db.close()
     return render_template("printers_monitor.html", printers=printer_list, lang=request.lang)
+
+
+@printers_bp.route("/printers/<int:id>/maintenance")
+def get_maintenance(id):
+    db = get_db()
+    logs = db.execute("SELECT * FROM maintenance_logs WHERE printer_id = ? ORDER BY date DESC", (id,)).fetchall()
+    db.close()
+    return jsonify([dict(l) for l in logs])
+
+
+@printers_bp.route("/printers/<int:id>/maintenance", methods=["POST"])
+def add_maintenance(id):
+    db = get_db()
+    db.execute(
+        "INSERT INTO maintenance_logs (printer_id, date, type, description, cost, hours_spent) VALUES (?, ?, ?, ?, ?, ?)",
+        (id, request.form.get("date", ""), request.form.get("type", "other"), request.form.get("description", ""), safe_float(request.form.get("cost", 0), 0), safe_float(request.form.get("hours_spent", 0), 0))
+    )
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})
+
+
+@printers_bp.route("/printers/maintenance/<int:log_id>/delete", methods=["POST"])
+def delete_maintenance(log_id):
+    db = get_db()
+    db.execute("DELETE FROM maintenance_logs WHERE id = ?", (log_id,))
+    db.commit()
+    db.close()
+    return jsonify({"ok": True})

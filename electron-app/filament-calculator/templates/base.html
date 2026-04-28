@@ -34,9 +34,9 @@
                     <a href="{{ url_for('printers') }}" data-endpoint="printers" class="{% if request.endpoint == 'printers' %}active{% endif %}">{{ _('nav_printers') }}</a>
                     <a href="{{ url_for('printers_monitor') }}" data-endpoint="printers_monitor" class="{% if request.endpoint == 'printers_monitor' %}active{% endif %}">{{ _('nav_monitor') }}</a>
                     <a href="{{ url_for('filaments') }}" data-endpoint="filaments" class="{% if request.endpoint == 'filaments' %}active{% endif %}">{{ _('nav_filaments') }}</a>
-                    <a href="{{ url_for('shpoolken') }}" data-endpoint="shpoolken" class="{% if request.endpoint == 'shpoolken' %}active{% endif %}">{{ _('shpoolken') }}</a>
                     <a href="{{ url_for('calculator') }}" data-endpoint="calculator" class="{% if request.endpoint == 'calculator' %}active{% endif %}">{{ _('nav_calculator') }}</a>
                     <a href="{{ url_for('history') }}" data-endpoint="history" class="{% if request.endpoint == 'history' %}active{% endif %}">{{ _('nav_history') }}</a>
+                    <a href="{{ url_for('clients') }}" data-endpoint="clients" class="{% if request.endpoint == 'clients' %}active{% endif %}">Клиенты</a>
                     <a href="{{ url_for('settings') }}" data-endpoint="settings" class="{% if request.endpoint == 'settings' %}active{% endif %}">{{ _('nav_settings') }}</a>
                     <a href="{{ url_for('about') }}" data-endpoint="about" class="{% if request.endpoint == 'about' %}active{% endif %}">{{ _('about') }}</a>
                     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme" id="theme-toggle-btn">

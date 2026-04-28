@@ -53,8 +53,13 @@ function toggleDashView() {
     renderDashFilaments();
 }
 
+function getStackBaseName(name) {
+    if (!name) return '';
+    return name.replace(/\s*#\d+$/, '').replace(/\s*\(копия\)$/, '');
+}
+
 function getDashStackKey(f) {
-    return (f.filament_type || '') + '|' + (f.manufacturer || '') + '|' + (f.name || '') + '|' + (f.color || '');
+    return (f.filament_type || '') + '|' + (f.manufacturer || '') + '|' + getStackBaseName(f.name) + '|' + (f.color || '');
 }
 
 function renderDashFilaments() {

@@ -4,12 +4,21 @@
 <h1>{{ _('calc_cost') }}</h1>
 
 <div class="card">
-    <form method="POST" action="{{ url_for('preview_cost') }}" class="form-grid" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('preview_cost') }}" class="form-grid" enctype="multipart/form-data" data-filaments='{{ filaments_json | tojson | safe }}'>
         <div class="form-group">
             <label for="printer_id">{{ _('printer') }}</label>
             <select id="printer_id" name="printer_id" required>
                 {% for p in printers %}
                 <option value="{{ p.id }}" {% if preview and preview.printer.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.power_watts }} {{ _('watts') }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="client_id">Клиент <span class="optional">{{ _('optional') }}</span></label>
+            <select id="client_id" name="client_id">
+                <option value="">—</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}" {% if preview and preview.client_id == c.id %}selected{% endif %}>{{ c.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -19,22 +28,22 @@
                 {% if preview and preview.filament_costs %}
                     {% for fc in preview.filament_costs %}
                     <div class="filament-row">
-                        <select name="filament_id" required>
-                            {% for f in filaments %}
-                            <option value="{{ f.id }}" {% if fc.id == f.id %}selected{% endif %}>{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }})</option>
-                            {% endfor %}
-                        </select>
+                        <div class="filament-picker" data-selected="{{ fc.id }}">
+                            <input type="hidden" name="filament_id" value="{{ fc.id }}">
+                            <div class="fp-trigger" onclick="toggleFilamentTree(this)">{{ fc.name }} ({{ fc.color }}, остаток: {{ fc.weight }}г)</div>
+                            <div class="fp-dropdown" style="display:none;"></div>
+                        </div>
                         <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required value="{{ "%.1f"|format(fc.weight) }}">
                         <button type="button" class="add-filament-btn" onclick="addFilamentRow()" title="Добавить">+</button>
                     </div>
                     {% endfor %}
                 {% else %}
                 <div class="filament-row">
-                    <select name="filament_id" required>
-                        {% for f in filaments %}
-                        <option value="{{ f.id }}">{{ f.name }} ({{ f.color }}, {{ _('remaining') }}: {{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }})</option>
-                        {% endfor %}
-                    </select>
+                    <div class="filament-picker">
+                        <input type="hidden" name="filament_id" value="">
+                        <div class="fp-trigger" onclick="toggleFilamentTree(this)">Выберите филамент...</div>
+                        <div class="fp-dropdown" style="display:none;"></div>
+                    </div>
                     <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>
                     <button type="button" class="add-filament-btn" onclick="addFilamentRow()" title="Добавить">+</button>
                 </div>
@@ -113,64 +122,214 @@
 
 <style>
 .filament-row { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.4rem; }
-.filament-row select { flex:2; padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem; }
 .filament-row input { flex:1; padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem; min-width:80px; }
 .add-filament-btn { width:32px; height:32px; padding:0; border:1px solid var(--border); border-radius:8px; background:var(--glass-bg); color:var(--text); cursor:pointer; font-size:1.1rem; flex-shrink:0; }
 .remove-filament-btn { width:32px; height:32px; padding:0; border:none; border-radius:8px; background:var(--danger); color:#fff; cursor:pointer; font-size:1rem; flex-shrink:0; }
+
+.filament-picker { position:relative; flex:2; min-width:0; }
+.fp-trigger { padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fp-trigger:hover { border-color:var(--primary); }
+.fp-dropdown { position:absolute; top:calc(100% + 4px); left:0; right:0; max-height:320px; overflow-y:auto; background:var(--glass-bg); backdrop-filter:var(--glass-backdrop); -webkit-backdrop-filter:var(--glass-backdrop); border:1px solid var(--glass-border); border-radius:12px; box-shadow:var(--glass-shadow-lg); z-index:100; padding:0.5rem; }
+.fp-dropdown .fp-search { width:100%; padding:0.4rem 0.6rem; border:1px solid var(--border); border-radius:6px; background:var(--bg-input); color:var(--text); font-size:0.85rem; margin-bottom:0.4rem; }
+.fp-group { margin-bottom:0.3rem; }
+.fp-group-header { padding:0.3rem 0.5rem; font-weight:600; font-size:0.8rem; color:var(--primary); cursor:pointer; display:flex; align-items:center; gap:0.3rem; border-radius:6px; }
+.fp-group-header:hover { background:var(--glass-bg-hover); }
+.fp-group-header .fp-arrow { transition:transform 0.2s; display:inline-block; width:12px; text-align:center; }
+.fp-group-header.expanded .fp-arrow { transform:rotate(90deg); }
+.fp-group-children { padding-left:0.8rem; display:none; }
+.fp-group-header.expanded + .fp-group-children { display:block; }
+.fp-item { padding:0.25rem 0.5rem; cursor:pointer; border-radius:6px; font-size:0.85rem; display:flex; align-items:center; gap:0.4rem; }
+.fp-item:hover { background:var(--glass-bg-hover); }
+.fp-item.selected { background:var(--primary-light); color:var(--primary); }
+.fp-item .fp-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.fp-item .fp-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fp-manufacturer { font-weight:600; color:var(--primary); }
 </style>
 
 <script>
-function addFilamentRow() {
-    var container = document.getElementById('filament-rows');
-    var template = container.querySelector('.filament-row');
-    var row = document.createElement('div');
-    row.className = 'filament-row';
-    row.innerHTML = '<select name="filament_id" required>' +
-        template.querySelector('select').innerHTML +
-        '</select>' +
-        '<input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>' +
-        '<button type="button" class="remove-filament-btn" onclick="this.parentElement.remove()">−</button>';
-    container.appendChild(row);
-}
+(function() {
+    var filamentsData = JSON.parse(document.querySelector('form').dataset.filaments || '[]');
+    var allFilamentsMap = {};
+    filamentsData.forEach(function(f) { allFilamentsMap[f.id] = f; });
 
-function saveCalculation() {
-    var form = document.querySelector('form');
-    var fd = new FormData(form);
-    fd.append('printer_id', document.getElementById('printer_id').value);
-    fd.append('model_name', document.getElementById('model_name').value);
-    fd.append('print_time_hours', document.getElementById('print_time_hours').value);
-    fd.append('base_rate', document.getElementById('base_rate').value);
-    fd.append('markup_percent', document.getElementById('markup_percent').value);
-    fd.append('other_expenses', document.getElementById('other_expenses').value);
-    
-    var fileInput = document.getElementById('model_file');
-    if (fileInput.files.length > 0) {
-        fd.append('model_file', fileInput.files[0]);
+    function buildTree(filaments) {
+        var tree = {};
+        filaments.forEach(function(f) {
+            var type = f.type || 'Другой';
+            var mfr = f.manufacturer || 'Без производителя';
+            var baseName = getStackBaseName(f.name);
+            if (!tree[type]) tree[type] = {};
+            if (!tree[type][mfr]) tree[type][mfr] = {};
+            if (!tree[type][mfr][baseName]) tree[type][mfr][baseName] = [];
+            tree[type][mfr][baseName].push(f);
+        });
+        return tree;
     }
-    
-    var filamentIds = [];
-    var filamentWeights = [];
-    document.querySelectorAll('.filament-row').forEach(function(row) {
-        filamentIds.push(row.querySelector('select').value);
-        filamentWeights.push(row.querySelector('input[type="number"]').value);
-    });
-    fd.delete('filament_id');
-    fd.delete('filament_weight');
-    filamentIds.forEach(function(id) { fd.append('filament_id', id); });
-    filamentWeights.forEach(function(w) { fd.append('filament_weight', w); });
-    
-    fetch('{{ url_for("save_calculation") }}', {
-        method: 'POST',
-        headers: {'X-Requested-With': 'fetch'},
-        body: fd
-    })
-    .then(function(resp) { return resp.json(); })
-    .then(function(data) {
-        if (data.ok) {
-            showToast('{{ _("calc_saved") }} ' + data.total.toFixed(2) + ' {{ _("rub") }}', 'success');
-            setTimeout(function() { location.reload(); }, 1500);
+
+    function getStackBaseName(name) {
+        if (!name) return '';
+        name = name.replace(/\s*#\d+\s*$/, '').replace(/\s*\(копия\)\s*$/i, '');
+        return name.trim();
+    }
+
+    function renderTree(dropdown, selectedId, onSelect) {
+        var tree = buildTree(filamentsData);
+        dropdown.innerHTML = '';
+        var search = document.createElement('input');
+        search.type = 'text';
+        search.className = 'fp-search';
+        search.placeholder = 'Поиск...';
+        dropdown.appendChild(search);
+
+        var content = document.createElement('div');
+        content.className = 'fp-tree-content';
+
+        function createGroup(label, level) {
+            var g = document.createElement('div');
+            g.className = 'fp-group';
+            var h = document.createElement('div');
+            h.className = 'fp-group-header' + (level < 2 ? ' expanded' : '');
+            h.innerHTML = '<span class="fp-arrow">›</span> <span>' + escapeHtml(label) + '</span>';
+            h.addEventListener('click', function(e) {
+                e.stopPropagation();
+                h.classList.toggle('expanded');
+            });
+            var ch = document.createElement('div');
+            ch.className = 'fp-group-children';
+            if (level < 2) ch.style.display = 'block';
+            g.appendChild(h);
+            g.appendChild(ch);
+            return {group: g, children: ch};
         }
+
+        function createItem(f) {
+            var item = document.createElement('div');
+            item.className = 'fp-item' + (f.id == selectedId ? ' selected' : '');
+            var dotColor = f.color_hex || '#ccc';
+            var label = f.name + ' (' + f.color + ', ' + f.remaining_g + 'г)';
+            item.innerHTML = '<span class="fp-dot" style="background:' + dotColor + '"></span><span class="fp-label">' + escapeHtml(label) + '</span>';
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                onSelect(f);
+            });
+            return item;
+        }
+
+        Object.keys(tree).sort().forEach(function(type) {
+            var typeNode = createGroup(type, 0);
+            Object.keys(tree[type]).sort().forEach(function(mfr) {
+                var mfrNode = createGroup(mfr, 1);
+                mfrNode.group.querySelector('.fp-group-header').classList.add('fp-manufacturer');
+                Object.keys(tree[type][mfr]).sort().forEach(function(stack) {
+                    var stackNode = createGroup(stack, 2);
+                    tree[type][mfr][stack].forEach(function(f) {
+                        stackNode.children.appendChild(createItem(f));
+                    });
+                    mfrNode.children.appendChild(stackNode.group);
+                });
+                typeNode.children.appendChild(mfrNode.group);
+            });
+            content.appendChild(typeNode.group);
+        });
+        dropdown.appendChild(content);
+
+        search.addEventListener('input', function() {
+            var q = search.value.toLowerCase();
+            content.querySelectorAll('.fp-item').forEach(function(item) {
+                item.style.display = item.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+            content.querySelectorAll('.fp-group').forEach(function(g) {
+                var visible = g.querySelectorAll('.fp-item:not([style*="none"])').length > 0;
+                g.style.display = visible ? '' : 'none';
+            });
+        });
+    }
+
+    function escapeHtml(t) {
+        return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    window.toggleFilamentTree = function(trigger) {
+        var picker = trigger.closest('.filament-picker');
+        var dropdown = picker.querySelector('.fp-dropdown');
+        var hidden = picker.querySelector('input[name="filament_id"]');
+        var isOpen = dropdown.style.display === 'block';
+        closeAllTrees();
+        if (!isOpen) {
+            dropdown.style.display = 'block';
+            renderTree(dropdown, hidden.value, function(f) {
+                hidden.value = f.id;
+                trigger.textContent = f.name + ' (' + f.color + ', остаток: ' + f.remaining_g + 'г)';
+                dropdown.style.display = 'none';
+            });
+            var search = dropdown.querySelector('.fp-search');
+            if (search) search.focus();
+        }
+    };
+
+    function closeAllTrees() {
+        document.querySelectorAll('.fp-dropdown').forEach(function(d) { d.style.display = 'none'; });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.filament-picker')) closeAllTrees();
     });
-}
+
+    window.addFilamentRow = function() {
+        var container = document.getElementById('filament-rows');
+        var row = document.createElement('div');
+        row.className = 'filament-row';
+        row.innerHTML = '<div class="filament-picker">' +
+            '<input type="hidden" name="filament_id" value="">' +
+            '<div class="fp-trigger" onclick="toggleFilamentTree(this)">Выберите филамент...</div>' +
+            '<div class="fp-dropdown" style="display:none;"></div>' +
+            '</div>' +
+            '<input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>' +
+            '<button type="button" class="remove-filament-btn" onclick="this.parentElement.remove()">−</button>';
+        container.appendChild(row);
+    };
+
+    window.saveCalculation = function() {
+        var form = document.querySelector('form');
+        var fd = new FormData(form);
+        fd.append('printer_id', document.getElementById('printer_id').value);
+        fd.append('model_name', document.getElementById('model_name').value);
+        fd.append('print_time_hours', document.getElementById('print_time_hours').value);
+        fd.append('base_rate', document.getElementById('base_rate').value);
+        fd.append('markup_percent', document.getElementById('markup_percent').value);
+        fd.append('other_expenses', document.getElementById('other_expenses').value);
+        fd.append('client_id', document.getElementById('client_id').value);
+
+        var fileInput = document.getElementById('model_file');
+        if (fileInput.files.length > 0) {
+            fd.append('model_file', fileInput.files[0]);
+        }
+
+        var filamentIds = [];
+        var filamentWeights = [];
+        document.querySelectorAll('.filament-row').forEach(function(row) {
+            var hidden = row.querySelector('input[name="filament_id"]');
+            filamentIds.push(hidden ? hidden.value : '');
+            filamentWeights.push(row.querySelector('input[type="number"]').value);
+        });
+        fd.delete('filament_id');
+        fd.delete('filament_weight');
+        filamentIds.forEach(function(id) { fd.append('filament_id', id); });
+        filamentWeights.forEach(function(w) { fd.append('filament_weight', w); });
+
+        fetch('{{ url_for("save_calculation") }}', {
+            method: 'POST',
+            headers: {'X-Requested-With': 'fetch'},
+            body: fd
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                showToast('{{ _("calc_saved") }} ' + data.total.toFixed(2) + ' {{ _("rub") }}', 'success');
+                setTimeout(function() { location.reload(); }, 1500);
+            }
+        });
+    };
+})();
 </script>
 {% endblock %}

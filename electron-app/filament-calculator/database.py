@@ -68,16 +68,38 @@ def init_db():
             FOREIGN KEY (filament_id) REFERENCES filaments(id)
         );
 
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            contact TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            email TEXT DEFAULT '',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value REAL NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS idx_calculations_created ON calculations(created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_calculations_printer ON calculations(printer_id);
-        CREATE INDEX IF NOT EXISTS idx_calculations_filament ON calculations(filament_id);
-        CREATE INDEX IF NOT EXISTS idx_filaments_name ON filaments(name);
-        CREATE INDEX IF NOT EXISTS idx_printers_name ON printers(name);
+        CREATE TABLE IF NOT EXISTS maintenance_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            printer_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'other',
+            description TEXT DEFAULT '',
+            cost REAL DEFAULT 0,
+            hours_spent REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (printer_id) REFERENCES printers(id)
+        );
+
+            CREATE INDEX IF NOT EXISTS idx_calculations_created ON calculations(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_calculations_printer ON calculations(printer_id);
+            CREATE INDEX IF NOT EXISTS idx_calculations_filament ON calculations(filament_id);
+            CREATE INDEX IF NOT EXISTS idx_filaments_name ON filaments(name);
+            CREATE INDEX IF NOT EXISTS idx_printers_name ON printers(name);
     """)
     conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('electricity_rate', 5.0)")
     conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('base_rate', 50.0)")
@@ -112,6 +134,12 @@ def init_db():
             conn.execute("ALTER TABLE calculations ADD COLUMN filament_data TEXT DEFAULT ''")
         if "other_expenses" not in columns:
             conn.execute("ALTER TABLE calculations ADD COLUMN other_expenses REAL DEFAULT 0")
+        if "client_id" not in columns:
+            conn.execute("ALTER TABLE calculations ADD COLUMN client_id INTEGER DEFAULT NULL REFERENCES clients(id)")
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_calculations_client ON calculations(client_id)")
+        except (sqlite3.OperationalError, sqlite3.DatabaseError):
+            pass
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration calculations columns: {e}")
 

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Клиенты - PrintPAL{% endblock %}
+{% block content %}
+<h1>Клиенты</h1>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <span>{{ clients|length }} клиентов</span>
+    <button class="btn btn-primary" onclick="openClientModal('add')">+ Добавить клиента</button>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+    {% if clients %}
+    <table class="table" style="margin:0;">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Контакт</th>
+                <th>Телефон</th>
+                <th>Email</th>
+                <th>Заметки</th>
+                <th style="width:140px;">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clients %}
+            <tr>
+                <td><strong>{{ c.name }}</strong></td>
+                <td>{{ c.contact or '—' }}</td>
+                <td>{{ c.phone or '—' }}</td>
+                <td>{{ c.email or '—' }}</td>
+                <td>{{ c.notes or '—' }}</td>
+                <td>
+                    <button class="btn btn-small" onclick="openClientModal('edit', {{ c.id }}, '{{ c.name|replace("'","\\'") }}', '{{ c.contact|default('', true)|replace("'","\\'") }}', '{{ c.phone|default('', true) }}', '{{ c.email|default('', true) }}', '{{ c.notes|default('', true)|replace("'","\\'") }}')">✏️</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteClient({{ c.id }})">🗑️</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-msg" style="padding:3rem;">Нет клиентов. Добавьте первого клиента.</p>
+    {% endif %}
+</div>
+
+<div id="client-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="cmodal-title">Добавить клиента</h3>
+            <button class="modal-close" onclick="closeClientModal()">✕</button>
+        </div>
+        <form id="client-form" class="modal-form">
+            <input type="hidden" id="cform-id" value="">
+            <div class="form-group">
+                <label>Название / Имя *</label>
+                <input type="text" id="c-name" required>
+            </div>
+            <div class="form-group">
+                <label>Контактное лицо</label>
+                <input type="text" id="c-contact">
+            </div>
+            <div class="form-group">
+                <label>Телефон</label>
+                <input type="text" id="c-phone">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="c-email">
+            </div>
+            <div class="form-group">
+                <label>Заметки</label>
+                <textarea id="c-notes" rows="2"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeClientModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openClientModal(mode, id, name, contact, phone, email, notes) {
+    var m = document.getElementById('client-modal');
+    m.style.display = 'flex';
+    document.getElementById('cform-id').value = '';
+    document.getElementById('c-name').value = '';
+    document.getElementById('c-contact').value = '';
+    document.getElementById('c-phone').value = '';
+    document.getElementById('c-email').value = '';
+    document.getElementById('c-notes').value = '';
+    document.getElementById('cmodal-title').textContent = 'Добавить клиента';
+    if (mode === 'edit') {
+        document.getElementById('cform-id').value = id;
+        document.getElementById('c-name').value = name || '';
+        document.getElementById('c-contact').value = contact || '';
+        document.getElementById('c-phone').value = phone || '';
+        document.getElementById('c-email').value = email || '';
+        document.getElementById('c-notes').value = notes || '';
+        document.getElementById('cmodal-title').textContent = 'Редактировать клиента';
+    }
+    setTimeout(function() { document.getElementById('c-name').focus(); }, 100);
+}
+
+function closeClientModal() { document.getElementById('client-modal').style.display = 'none'; }
+
+document.getElementById('client-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('cform-id').value;
+    var fd = new FormData();
+    fd.append('name', document.getElementById('c-name').value);
+    fd.append('contact', document.getElementById('c-contact').value);
+    fd.append('phone', document.getElementById('c-phone').value);
+    fd.append('email', document.getElementById('c-email').value);
+    fd.append('notes', document.getElementById('c-notes').value);
+    var url = id ? '/clients/' + id + '/edit' : '/clients/add';
+    fetch(url, { method: 'POST', body: fd }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
+});
+
+function deleteClient(id) {
+    appConfirm('Удалить клиента?').then(function(ok) {
+        if (!ok) return;
+        fetch('/clients/' + id + '/delete', { method: 'POST' })
+        .then(function() { window.location.reload(); });
+    });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeClientModal(); }
+});
+</script>
+{% endblock %}

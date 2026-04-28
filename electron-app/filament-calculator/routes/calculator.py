@@ -13,12 +13,16 @@ def calculator():
     db = get_db()
     all_printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
     all_filaments = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
+    all_clients = db.execute("SELECT id, name FROM clients ORDER BY name").fetchall()
     db.close()
+    filaments_json = [dict(f) for f in all_filaments]
     from app import get_setting
     return render_template(
         "calculator.html",
         printers=all_printers,
         filaments=all_filaments,
+        filaments_json=filaments_json,
+        clients=all_clients,
         default_base=get_setting("base_rate"),
         default_markup=get_setting("markup_percent"),
         preview=None,
@@ -64,8 +68,11 @@ def preview_cost():
 
     all_printers = db.execute("SELECT * FROM printers ORDER BY name").fetchall()
     all_filaments = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
+    all_clients = db.execute("SELECT id, name FROM clients ORDER BY name").fetchall()
+    filaments_json = [dict(f) for f in all_filaments]
     db.close()
 
+    client_id = request.form.get("client_id") or None
     from app import calculate_cost_details, get_setting
     details = calculate_cost_details(printer, filaments_data, print_time, base_rate, markup_pct, other_expenses)
 
@@ -73,10 +80,13 @@ def preview_cost():
         "calculator.html",
         printers=all_printers,
         filaments=all_filaments,
+        filaments_json=filaments_json,
+        clients=all_clients,
         default_base=get_setting("base_rate"),
         default_markup=get_setting("markup_percent"),
         preview={
             "printer": dict(printer),
+            "client_id": client_id,
             "model_name": request.form["model_name"],
             "print_time": print_time,
             "base_rate": base_rate,
@@ -140,17 +150,18 @@ def save_calculation():
 
     first_fid = filament_ids[0] if filament_ids else 1
     filament_data_json = json.dumps(details["filament_costs"], ensure_ascii=False)
+    client_id = request.form.get("client_id") or None
     
     try:
         db.execute(
-            "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, other_expenses, markup_percent, markup_amount, total_cost, model_file, model_orig_name, filament_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (printer["id"], first_fid, request.form["model_name"], details["total_weight"], print_time, base_rate, details["total_filament_cost"], details["electricity_cost"], details["depreciation_cost"], other_expenses, markup_pct, details["markup_amount"], details["total"], model_file, model_orig_name, filament_data_json)
+            "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, other_expenses, markup_percent, markup_amount, total_cost, model_file, model_orig_name, filament_data, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (printer["id"], first_fid, request.form["model_name"], details["total_weight"], print_time, base_rate, details["total_filament_cost"], details["electricity_cost"], details["depreciation_cost"], other_expenses, markup_pct, details["markup_amount"], details["total"], model_file, model_orig_name, filament_data_json, client_id)
         )
     except (ValueError, TypeError) as e:
         logger.error(f"Insert with filament_data failed: {e}")
         db.execute(
-            "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, other_expenses, markup_percent, markup_amount, total_cost, model_file, model_orig_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (printer["id"], first_fid, request.form["model_name"], details["total_weight"], print_time, base_rate, details["total_filament_cost"], details["electricity_cost"], details["depreciation_cost"], other_expenses, markup_pct, details["markup_amount"], details["total"], model_file, model_orig_name)
+            "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, other_expenses, markup_percent, markup_amount, total_cost, model_file, model_orig_name, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (printer["id"], first_fid, request.form["model_name"], details["total_weight"], print_time, base_rate, details["total_filament_cost"], details["electricity_cost"], details["depreciation_cost"], other_expenses, markup_pct, details["markup_amount"], details["total"], model_file, model_orig_name, client_id)
         )
     for fid, fweight in zip(filament_ids, filament_weights):
         db.execute("UPDATE filaments SET remaining_g = remaining_g - ? WHERE id = ?", (safe_float(fweight, 0), fid))
