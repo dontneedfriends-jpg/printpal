@@ -30,6 +30,7 @@
             <tr>
                 <th class="select-col" style="display:none;"></th>
                 <th>{{ _('name') }}</th>
+                <th>Теги</th>
                 <th>{{ _('ip_address') }}</th>
                 <th>{{ _('power_watts') }}</th>
                 <th>{{ _('depr_per_hour') }}</th>
@@ -41,11 +42,21 @@
             <tr id="prow-{{ p.id }}">
                 <td class="select-col" style="display:none;"><input type="checkbox" class="printer-check" value="{{ p.id }}" onchange="updateSelectedCount()"></td>
                 <td>{{ p.name }}</td>
+                <td>
+                    {% if p.tags %}
+                        {% for tag in p.tags.split(',') %}
+                            {% if tag.strip() %}
+                            <span class="printer-tag">{{ tag.strip() }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}—{% endif %}
+                </td>
                 <td>{{ p.ip_address or '—' }}</td>
                 <td>{{ p.power_watts }} {{ _('watts') }}</td>
                 <td>{{ "%.2f"|format(p.depreciation_per_hour) }} {{ _('rub') }}</td>
                 <td>
-                    <button class="btn btn-small" onclick="editPrinter({{ p.id }}, '{{ p.name|replace("'","\\'") }}', {{ p.power_watts }}, {{ p.purchase_price }}, {{ p.depreciation_per_hour }}, '{{ p.ip_address|default('', true)|replace("'","\\'") }}', '{{ p.camera_ip|default('', true)|replace("'","\\'") }}')">✏️</button>
+                    <button class="btn btn-small" onclick="editPrinter({{ p.id }}, '{{ p.name|replace("'","\\'") }}', {{ p.power_watts }}, {{ p.purchase_price }}, {{ p.depreciation_per_hour }}, '{{ p.ip_address|default('', true)|replace("'","\\'") }}', '{{ p.camera_ip|default('', true)|replace("'","\\'") }}', '{{ p.commissioning_date|default('', true) }}', '{{ p.tags|default('', true)|replace("'","\\'") }}')">✏️</button>
+                    <button class="btn btn-small btn-secondary" onclick="copyPrinter({{ p.id }})">📄</button>
                     <button class="btn btn-danger btn-small" onclick="deletePrinter({{ p.id }})">🗑️</button>
                 </td>
             </tr>
@@ -89,6 +100,14 @@
                 <label>{{ _('camera_ip') }} <span class="optional">{{ _('optional') }}</span></label>
                 <input type="text" id="f-cam" placeholder="192.168.1.101:8080">
             </div>
+            <div class="form-group">
+                <label>Дата ввода в эксплуатацию <span class="optional">{{ _('optional') }}</span></label>
+                <input type="date" id="f-commissioning">
+            </div>
+            <div class="form-group">
+                <label>Теги <span class="optional">{{ _('optional') }}</span></label>
+                <input type="text" id="f-tags" placeholder="Комната 1, Рабочий, VIP">
+            </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">{{ _('cancel') }}</button>
                 <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
@@ -108,6 +127,8 @@ function openModal(mode, data) {
     document.getElementById('f-depr').value = '0';
     document.getElementById('f-ip').value = '';
     document.getElementById('f-cam').value = '';
+    document.getElementById('f-commissioning').value = '';
+    document.getElementById('f-tags').value = '';
     document.getElementById('modal-title').textContent = '{{ _('add_printer') }}';
     if (mode === 'edit' && data) {
         document.getElementById('form-id').value = data.id;
@@ -117,6 +138,8 @@ function openModal(mode, data) {
         document.getElementById('f-depr').value = data.depr;
         document.getElementById('f-ip').value = data.ip;
         document.getElementById('f-cam').value = data.cam;
+        document.getElementById('f-commissioning').value = data.commissioning || '';
+        document.getElementById('f-tags').value = data.tags || '';
         document.getElementById('modal-title').textContent = '{{ _('edit_printer') }}';
     }
     setTimeout(function() { document.getElementById('f-name').focus(); }, 100);
@@ -126,8 +149,14 @@ function closeModal() {
     document.getElementById('printer-modal').style.display = 'none';
 }
 
-function editPrinter(id, name, watts, price, depr, ip, cam) {
-    openModal('edit', { id: id, name: name, watts: watts, price: price, depr: depr, ip: ip, cam: cam });
+function editPrinter(id, name, watts, price, depr, ip, cam, commissioning, tags) {
+    openModal('edit', { id: id, name: name, watts: watts, price: price, depr: depr, ip: ip, cam: cam, commissioning: commissioning, tags: tags });
+}
+
+function copyPrinter(id) {
+    fetch('/printers/' + id + '/copy', { method: 'POST' })
+    .then(function() { window.location.reload(); })
+    .catch(function() { window.location.reload(); });
 }
 
 function deletePrinter(id) {
@@ -209,6 +238,8 @@ document.getElementById('printer-form').addEventListener('submit', function(e) {
     fd.append('depreciation_per_hour', document.getElementById('f-depr').value);
     fd.append('ip_address', document.getElementById('f-ip').value);
     fd.append('camera_ip', document.getElementById('f-cam').value);
+    fd.append('commissioning_date', document.getElementById('f-commissioning').value);
+    fd.append('tags', document.getElementById('f-tags').value);
 
     var url = id ? '/printers/' + id + '/edit' : '/printers/add';
     fetch(url, { method: 'POST', body: fd })
@@ -220,5 +251,9 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { closeModal(); }
 });
 </script>
+
+<style>
+.printer-tag { display:inline-block; padding:0.15rem 0.5rem; border-radius:6px; background:var(--accent-light); color:var(--accent); font-size:0.75rem; margin-right:0.35rem; margin-bottom:0.2rem; white-space:nowrap; }
+</style>
 
 {% endblock %}

@@ -114,19 +114,23 @@ def shpoolken_add():
     diameter = safe_float(request.form.get("diameter"), 1.75)
     weight = safe_float(request.form.get("weight"), 1000)
     spool_price = safe_float(request.form.get("spool_price"))
+    quantity = max(1, min(100, int(request.form.get("quantity", 1))))
     
     full_name = name
     if color and color not in name:
         full_name = f"{full_name} {color}"
     
-    db.execute("""
-        INSERT INTO filaments (name, filament_type, color, color_hex, spool_weight_g, spool_price, remaining_g, density, diameter)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (full_name, material, color, color_hex, weight, spool_price, weight, density or 0, diameter or 1.75))
+    for i in range(quantity):
+        suffix = f" #{i+1}" if quantity > 1 else ""
+        db.execute("""
+            INSERT INTO filaments (manufacturer, name, filament_type, color, color_hex, spool_weight_g, spool_price, remaining_g, density, diameter)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (manufacturer, full_name + suffix, material, color, color_hex, weight, spool_price, weight, density or 0, diameter or 1.75))
+    
     db.commit()
     db.close()
     
-    flash(_t(request.lang, "shpoolken_added"), "success")
+    flash(_t(request.lang, "shpoolken_added") + (f" x{quantity}" if quantity > 1 else ""), "success")
     return redirect(url_for("filaments.filaments"))
 
 
@@ -147,6 +151,8 @@ def shpoolken_bulk_add():
         
         price_key = "price_" + fid
         spool_price = safe_float(request.form.get(price_key))
+        qty_key = "qty_" + fid
+        quantity = max(1, min(100, int(request.form.get(qty_key, 1))))
         
         manufacturer = f["manufacturer"] or ""
         name = f["name"] or ""
@@ -161,11 +167,13 @@ def shpoolken_bulk_add():
         if color and color not in name:
             full_name = f"{full_name} {color}"
         
-        db.execute("""
-            INSERT INTO filaments (name, filament_type, color, color_hex, spool_weight_g, spool_price, remaining_g, density, diameter)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (full_name, material, color, color_hex, weight, spool_price, weight, density or 0, diameter or 1.75))
-        added += 1
+        for i in range(quantity):
+            suffix = f" #{i+1}" if quantity > 1 else ""
+            db.execute("""
+                INSERT INTO filaments (manufacturer, name, filament_type, color, color_hex, spool_weight_g, spool_price, remaining_g, density, diameter)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (manufacturer, full_name + suffix, material, color, color_hex, weight, spool_price, weight, density or 0, diameter or 1.75))
+            added += 1
     
     db.commit()
     db.close()

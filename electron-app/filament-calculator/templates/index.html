@@ -37,35 +37,128 @@
 </div>
 {% endif %}
 
-<h2>{{ _('remaining') }}</h2>
-<div class="filament-grid">
-    {% for f in filaments %}
-    <div class="filament-card {{ 'low' if f.remaining_g < 200 else 'medium' if f.remaining_g < 500 else 'ok' }}">
-        <div class="filament-header">
-            <span class="filament-name">{{ f.name }}</span>
-            {% if f.color_hex %}
-            <span class="filament-color-dot" style="background:#{{ f.color_hex }};"></span>
-            {% elif f.color and f.color not in f.name %}
-            <span class="filament-color">{{ f.color }}</span>
-            {% endif %}
-        </div>
-        <div class="filament-type">{{ f.filament_type }}</div>
-        <div class="filament-remaining">
-            <span class="remaining-value">{{ "%.0f"|format(f.remaining_g) }} {{ _('grams') }}</span>
-            <span class="remaining-bar">
-                <span class="remaining-fill" style="width: {{ (f.remaining_g / f.spool_weight_g * 100)|int }}%"></span>
-            </span>
-        </div>
-        <div class="filament-price">{{ "%.2f"|format(f.price_per_g) }} {{ _('rub_g') }}</div>
-    </div>
-    {% else %}
-    <p class="empty-msg">{{ _('no_filaments') }}. <a href="{{ url_for('filaments') }}">{{ _('add_filament') }}</a></p>
-    {% endfor %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <h2 style="margin:0;">{{ _('remaining') }}</h2>
+    <button class="btn btn-secondary" id="btn-dash-view" onclick="toggleDashView()">🗂️ Стеки</button>
+</div>
+<div id="dash-filament-grid" class="filament-grid"></div>
+
+<script>
+var dashFilamentData = {{ filaments_json|tojson }};
+var dashViewMode = 'list';
+
+function toggleDashView() {
+    dashViewMode = dashViewMode === 'list' ? 'stack' : 'list';
+    document.getElementById('btn-dash-view').textContent = dashViewMode === 'list' ? '🗂️ Стеки' : '📋 Список';
+    renderDashFilaments();
+}
+
+function getDashStackKey(f) {
+    return (f.filament_type || '') + '|' + (f.manufacturer || '') + '|' + (f.name || '') + '|' + (f.color || '');
+}
+
+function renderDashFilaments() {
+    var container = document.getElementById('dash-filament-grid');
+    container.innerHTML = '';
+
+    if (dashFilamentData.length === 0) {
+        container.innerHTML = '<p class="empty-msg">{{ _('no_filaments') }}. <a href="{{ url_for('filaments') }}">{{ _('add_filament') }}</a></p>';
+        return;
+    }
+
+    if (dashViewMode === 'stack') {
+        var stacks = {};
+        dashFilamentData.forEach(function(f) {
+            var key = getDashStackKey(f);
+            if (!stacks[key]) {
+                stacks[key] = {
+                    type: f.filament_type,
+                    manufacturer: f.manufacturer,
+                    name: f.name,
+                    color: f.color,
+                    color_hex: f.color_hex,
+                    items: [],
+                    total_remaining: 0,
+                    total_weight: 0,
+                    min_remaining_pct: 100
+                };
+            }
+            stacks[key].items.push(f);
+            stacks[key].total_remaining += f.remaining_g;
+            stacks[key].total_weight += f.spool_weight_g;
+            var pct = f.remaining_g / f.spool_weight_g * 100;
+            if (pct < stacks[key].min_remaining_pct) stacks[key].min_remaining_pct = pct;
+        });
+
+        Object.values(stacks).forEach(function(stack) {
+            var card = document.createElement('div');
+            var statusClass = stack.min_remaining_pct < 20 ? 'low' : stack.min_remaining_pct < 50 ? 'medium' : 'ok';
+            card.className = 'filament-card stack-card ' + statusClass;
+            card.innerHTML =
+                '<div class="filament-header">' +
+                '<span class="filament-name">' + (stack.manufacturer || '') + ' ' + stack.name + '</span>' +
+                (stack.color_hex ? '<span class="filament-color-dot" style="background:#' + stack.color_hex + ';"></span>' : '') +
+                '</div>' +
+                '<div class="filament-type">' + stack.type + ' — ' + stack.color + '</div>' +
+                '<div class="filament-remaining">' +
+                '<span class="remaining-value">' + stack.items.length + ' шт / ' + stack.total_remaining.toFixed(0) + ' г</span>' +
+                '<span class="remaining-bar"><span class="remaining-fill" style="width:' + (stack.total_remaining / stack.total_weight * 100).toFixed(0) + '%"></span></span>' +
+                '</div>' +
+                '<div class="stack-items" style="display:none; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid var(--border-table);">' +
+                stack.items.map(function(f) {
+                    return '<div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; font-size:0.82rem;">' +
+                        '<span>' + f.remaining_g.toFixed(0) + ' / ' + f.spool_weight_g.toFixed(0) + ' г</span>' +
+                        '<span style="color:var(--text-muted);">' + f.price_per_g.toFixed(2) + ' руб/г</span>' +
+                        '</div>';
+                }).join('') +
+                '</div>';
+            card.onclick = function(e) {
+                if (e.target.closest('a')) return;
+                var items = card.querySelector('.stack-items');
+                items.style.display = items.style.display === 'none' ? 'block' : 'none';
+            };
+            container.appendChild(card);
+        });
+    } else {
+        dashFilamentData.forEach(function(f) {
+            var card = document.createElement('div');
+            var statusClass = f.remaining_g < 200 ? 'low' : f.remaining_g < 500 ? 'medium' : 'ok';
+            card.className = 'filament-card ' + statusClass;
+            card.innerHTML =
+                '<div class="filament-header">' +
+                '<span class="filament-name">' + f.name + '</span>' +
+                (f.color_hex ? '<span class="filament-color-dot" style="background:#' + f.color_hex + ';"></span>' : '') +
+                '</div>' +
+                '<div class="filament-type">' + f.filament_type + '</div>' +
+                '<div class="filament-remaining">' +
+                '<span class="remaining-value">' + f.remaining_g.toFixed(0) + ' г</span>' +
+                '<span class="remaining-bar"><span class="remaining-fill" style="width:' + (f.remaining_g / f.spool_weight_g * 100).toFixed(0) + '%"></span></span>' +
+                '</div>' +
+                '<div class="filament-price">' + f.price_per_g.toFixed(2) + ' руб/г</div>';
+            container.appendChild(card);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderDashFilaments();
+});
+</script>
+
+<div class="calc-sticky">
+    <a href="{{ url_for('calculator') }}" class="btn btn-primary btn-large">{{ _('go_calc') }}</a>
 </div>
 
-<a href="{{ url_for('calculator') }}" class="btn btn-primary btn-large">{{ _('go_calc') }}</a>
-
 <style>
+.calc-sticky {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    padding: 0.75rem;
+    margin-top: 1rem;
+}
 .maintenance-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -93,5 +186,8 @@
 .maint-card.maint-crit .maint-fill { background: var(--low-accent); }
 .maint-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; }
 .filament-color-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--glass-border); flex-shrink: 0; }
+.calc-sticky .btn-primary {
+    box-shadow: 0 8px 32px rgba(67, 97, 238, 0.4);
+}
 </style>
 {% endblock %}

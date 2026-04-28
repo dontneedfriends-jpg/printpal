@@ -95,6 +95,10 @@ def init_db():
             conn.execute("ALTER TABLE printers ADD COLUMN maintenance_hours REAL DEFAULT 0")
         if "camera_ip" not in columns:
             conn.execute("ALTER TABLE printers ADD COLUMN camera_ip TEXT DEFAULT ''")
+        if "commissioning_date" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN commissioning_date TEXT DEFAULT ''")
+        if "tags" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN tags TEXT DEFAULT ''")
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration printers columns: {e}")
 
@@ -106,6 +110,8 @@ def init_db():
             conn.execute("ALTER TABLE calculations ADD COLUMN model_orig_name TEXT DEFAULT ''")
         if "filament_data" not in columns:
             conn.execute("ALTER TABLE calculations ADD COLUMN filament_data TEXT DEFAULT ''")
+        if "other_expenses" not in columns:
+            conn.execute("ALTER TABLE calculations ADD COLUMN other_expenses REAL DEFAULT 0")
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration calculations columns: {e}")
 
@@ -119,6 +125,8 @@ def init_db():
             conn.execute("ALTER TABLE filaments ADD COLUMN color_hex TEXT DEFAULT ''")
         if "barcode" not in columns:
             conn.execute("ALTER TABLE filaments ADD COLUMN barcode TEXT DEFAULT ''")
+        if "manufacturer" not in columns:
+            conn.execute("ALTER TABLE filaments ADD COLUMN manufacturer TEXT DEFAULT ''")
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration filaments columns: {e}")
 

@@ -2,42 +2,122 @@
 {% block title %}{{ _('monitor') }} - PrintPAL{% endblock %}
 {% block content %}
 {% if printers %}
-<div class="monitor-layout">
-    <div class="monitor-sidebar">
-        {% for p in printers %}
-        <div class="monitor-printer-btn {% if loop.first %}active{% endif %}" data-ip="{{ p.ip_address }}" onclick="selectPrinter(this)">
-            <div class="mp-name">{{ p.name }}</div>
-            <div class="mp-ip">{{ p.ip_address }}</div>
-        </div>
-        {% endfor %}
-        <div style="padding:0.5rem; display:flex; flex-direction:column; gap:0.35rem;">
-            <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-primary" style="width:100%;text-align:center;">{{ _('open_browser') }}</a>
+<div class="monitor-layout-v2">
+    <div class="monitor-topbar">
+        <div class="monitor-printer-list" id="printer-list">
             {% for p in printers %}
-            {% if p.camera_ip %}
-            <a id="cam-link-{{ p.id }}" href="http://{{ p.camera_ip }}" target="_blank" class="btn btn-small btn-secondary" style="width:100%;text-align:center;" data-printer="{{ p.id }}">📷 {{ _('open_camera') }} {{ p.name }}</a>
-            {% endif %}
+            <div class="monitor-printer-chip {% if loop.first %}active{% endif %}" data-ip="{{ p.ip_address }}" data-id="{{ p.id }}" data-cam="{{ p.camera_ip or '' }}" onclick="selectPrinter(this)">
+                <div class="mp-chip-name">{{ p.name }}</div>
+                <div class="mp-chip-ip">{{ p.ip_address }}</div>
+            </div>
             {% endfor %}
         </div>
+        <div class="monitor-actions">
+            <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-primary">{{ _('open_browser') }}</a>
+            <a id="cam-link" href="#" target="_blank" class="btn btn-small btn-secondary" style="display:none;">📷 {{ _('open_camera') }}</a>
+        </div>
     </div>
-    <div class="monitor-viewer">
+    <div class="monitor-viewer-v2">
         {% for p in printers %}
-        <iframe class="monitor-iframe {% if loop.first %}active{% endif %}" id="iframe-{{ loop.index }}" src="http://{{ p.ip_address }}" title="{{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
+        <iframe class="monitor-iframe-v2 {% if loop.first %}active{% endif %}" id="iframe-{{ loop.index }}" src="http://{{ p.ip_address }}" title="{{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
         {% endfor %}
     </div>
 </div>
 <script>
 function selectPrinter(el) {
-    document.querySelectorAll('.monitor-printer-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.monitor-printer-chip').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
     const ip = el.dataset.ip;
-    document.querySelectorAll('.monitor-iframe').forEach(f => f.classList.remove('active'));
-    const idx = Array.from(document.querySelectorAll('.monitor-printer-btn')).indexOf(el);
+    const cam = el.dataset.cam;
+    const idx = Array.from(document.querySelectorAll('.monitor-printer-chip')).indexOf(el);
+    
+    document.querySelectorAll('.monitor-iframe-v2').forEach(f => f.classList.remove('active'));
     const iframe = document.getElementById('iframe-' + (idx + 1));
     if (iframe) iframe.classList.add('active');
+    
     document.getElementById('direct-link').href = 'http://' + ip;
-    document.getElementById('direct-link').textContent = '{{ _('open_browser') }} ' + el.querySelector('.mp-name').textContent;
+    
+    var camLink = document.getElementById('cam-link');
+    if (cam) {
+        camLink.href = 'http://' + cam;
+        camLink.style.display = 'inline-flex';
+    } else {
+        camLink.style.display = 'none';
+    }
 }
 </script>
+<style>
+.monitor-layout-v2 {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 90px);
+    gap: 0.5rem;
+}
+.monitor-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+.monitor-printer-list {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    padding-bottom: 2px;
+}
+.monitor-printer-list::-webkit-scrollbar { height: 4px; }
+.monitor-printer-list::-webkit-scrollbar-track { background: transparent; }
+.monitor-printer-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.monitor-printer-chip {
+    padding: 0.5rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    min-width: 120px;
+    text-align: center;
+}
+.monitor-printer-chip:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-strong);
+}
+.monitor-printer-chip.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    box-shadow: 0 0 0 2px var(--accent-light);
+}
+.mp-chip-name { font-weight: 600; font-size: 0.88rem; color: var(--text); }
+.mp-chip-ip { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; font-family: 'SF Mono', 'Courier New', monospace; }
+.monitor-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+.monitor-viewer-v2 {
+    flex: 1;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    background: var(--bg-card);
+    position: relative;
+    min-height: 0;
+}
+.monitor-iframe-v2 {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none;
+    position: absolute;
+    top: 0; left: 0;
+}
+.monitor-iframe-v2.active { display: block; }
+</style>
 {% else %}
 <div class="card">
     <p class="empty-msg">{{ _('no_ip') }}. <a href="{{ url_for('printers') }}">{{ _('add_ip') }}</a></p>

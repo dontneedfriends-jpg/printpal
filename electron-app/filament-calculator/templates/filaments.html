@@ -5,10 +5,18 @@
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; gap:0.75rem; flex-wrap:wrap;">
     <div style="display:flex; align-items:center; gap:0.75rem;">
-        <span>{{ filaments|length }} {{ _('spools') }}</span>
+        <span id="filament-count">{{ filaments|length }} {{ _('spools') }}</span>
     </div>
     <div style="display:flex; gap:0.5rem; flex:1; min-width:200px; flex-wrap:wrap;">
         <input type="text" id="filament-search" placeholder="{{ _('search') }}" style="flex:1; min-width:150px; padding:0.5rem 0.75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem;" oninput="filterFilaments()">
+        <select id="filament-sort" onchange="renderFilaments()" style="padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem;">
+            <option value="name">{{ _('name') }}</option>
+            <option value="manufacturer">{{ _('manufacturer') }}</option>
+            <option value="filament_type">{{ _('filament_type') }}</option>
+            <option value="color">{{ _('color') }}</option>
+            <option value="remaining_g">{{ _('remaining') }}</option>
+        </select>
+        <button class="btn btn-secondary" id="btn-view-mode" onclick="toggleViewMode()">🗂️ Стеки</button>
         <button class="btn btn-secondary" id="btn-select-mode" onclick="toggleSelectMode()">☐ {{ _('select') }}</button>
         <button class="btn btn-primary" onclick="openFilamentModal('add')">+ {{ _('add') }}</button>
         <a href="{{ url_for('export_filaments') }}" class="btn btn-secondary" title="Экспорт">📤</a>
@@ -41,6 +49,7 @@
         <thead>
             <tr>
                 <th class="select-col" style="display:none;"></th>
+                <th>{{ _('manufacturer') }}</th>
                 <th>{{ _('name') }}</th>
                 <th>{{ _('filament_type') }}</th>
                 <th>{{ _('color') }}</th>
@@ -54,6 +63,7 @@
             {% for f in filaments %}
             <tr id="frow-{{ f.id }}" class="{{ 'row-low' if f.remaining_g < 200 else 'row-medium' if f.remaining_g < 500 }}">
                 <td class="select-col" style="display:none;"><input type="checkbox" class="filament-check" value="{{ f.id }}" onchange="updateSelectedCount()"></td>
+                <td>{{ f.manufacturer or '' }}</td>
                 <td>{{ f.name }}</td>
                 <td>{{ f.filament_type }}</td>
                 <td>
@@ -73,7 +83,8 @@
                 <td>{{ "%.2f"|format(f.price_per_g) }} руб</td>
                 <td>{{ f.barcode or '' }}</td>
                 <td>
-                    <button class="btn btn-small" onclick="openFilamentModal('edit', {{ f.id }}, '{{ f.name|replace("'","\\'") }}', '{{ f.filament_type }}', '{{ f.color|replace("'","\\'") }}', {{ f.spool_weight_g }}, {{ f.spool_price }}, '{{ f.barcode|default('', true) }}')">✏️</button>
+                    <button class="btn btn-small" onclick="openFilamentModal('edit', {{ f.id }}, '{{ f.name|replace("'","\\'") }}', '{{ f.filament_type }}', '{{ f.color|replace("'","\\'") }}', {{ f.spool_weight_g }}, {{ f.spool_price }}, '{{ f.barcode|default('', true) }}', '{{ f.color_hex|default('', true) }}', '{{ f.manufacturer|default('', true)|replace("'","\\'") }}')">✏️</button>
+                    <button class="btn btn-small btn-secondary" onclick="copyFilament({{ f.id }})">📄</button>
                     <button class="btn btn-small btn-secondary" onclick="openAdjustModal({{ f.id }}, {{ f.remaining_g }})">⚖️</button>
                     <button class="btn btn-danger btn-small" onclick="deleteFilament({{ f.id }})">🗑️</button>
                 </td>
@@ -95,15 +106,28 @@
         <form id="filament-form" class="modal-form">
             <input type="hidden" id="fform-id" value="">
             <div class="form-group">
+                <label>{{ _('manufacturer') }}</label>
+                <input type="text" id="ff-manufacturer" required placeholder="eSun">
+            </div>
+            <div class="form-group">
                 <label>{{ _('name') }}</label>
-                <input type="text" id="ff-name" required placeholder="eSun PLA+">
+                <input type="text" id="ff-name" required placeholder="PLA+">
             </div>
             <div class="form-group">
                 <label>{{ _('filament_type') }}</label>
                 <select id="ff-type" required>
-                    <option value="PLA">PLA</option><option value="PLA+">PLA+</option><option value="PETG">PETG</option>
-                    <option value="ABS">ABS</option><option value="TPU">TPU</option><option value="Nylon">Nylon</option>
-                    <option value="ASA">ASA</option><option value="PC">PC</option><option value="Другой">Другой</option>
+                    <option value="PLA">PLA</option>
+                    <option value="PLA+">PLA+</option>
+                    <option value="PETG">PETG</option>
+                    <option value="ABS">ABS</option>
+                    <option value="ASA">ASA</option>
+                    <option value="TPU">TPU</option>
+                    <option value="PC">PC</option>
+                    <option value="PA">PA (Nylon)</option>
+                    <option value="HIPS">HIPS</option>
+                    <option value="PVA">PVA</option>
+                    <option value="Composite">Composite</option>
+                    <option value="Другой">Другой</option>
                 </select>
             </div>
             <div class="form-group color-form-group">
@@ -170,10 +194,11 @@ function updateColorPickerFromText() {
     }
 }
 
-function openFilamentModal(mode, id, name, type, color, weight, price, barcode) {
+function openFilamentModal(mode, id, name, type, color, weight, price, barcode, colorHex, manufacturer) {
     var m = document.getElementById('filament-modal');
     m.style.display = 'flex';
     document.getElementById('fform-id').value = '';
+    document.getElementById('ff-manufacturer').value = '';
     document.getElementById('ff-name').value = '';
     document.getElementById('ff-type').value = 'PLA';
     document.getElementById('ff-color').value = '';
@@ -185,6 +210,7 @@ function openFilamentModal(mode, id, name, type, color, weight, price, barcode) 
     document.getElementById('fmodal-title').textContent = '{{ _('add_filament') }}';
     if (mode === 'edit') {
         document.getElementById('fform-id').value = id;
+        document.getElementById('ff-manufacturer').value = manufacturer || '';
         document.getElementById('ff-name').value = name;
         document.getElementById('ff-type').value = type;
         document.getElementById('ff-color').value = color;
@@ -192,8 +218,15 @@ function openFilamentModal(mode, id, name, type, color, weight, price, barcode) 
         document.getElementById('ff-price').value = price;
         document.getElementById('ff-barcode').value = barcode || '';
         document.getElementById('fmodal-title').textContent = '{{ _('edit_filament') }}';
+        var hex = colorHex || '';
+        if (hex) {
+            document.getElementById('ff-color-hex').value = hex;
+            if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+                document.getElementById('ff-color-picker').value = '#' + hex;
+            }
+        }
     }
-    setTimeout(function() { document.getElementById('ff-name').focus(); }, 100);
+    setTimeout(function() { document.getElementById('ff-manufacturer').focus(); }, 100);
 }
 
 function closeFilamentModal() { document.getElementById('filament-modal').style.display = 'none'; }
@@ -202,6 +235,7 @@ document.getElementById('filament-form').addEventListener('submit', function(e) 
     e.preventDefault();
     var id = document.getElementById('fform-id').value;
     var fd = new FormData();
+    fd.append('manufacturer', document.getElementById('ff-manufacturer').value);
     fd.append('name', document.getElementById('ff-name').value);
     fd.append('filament_type', document.getElementById('ff-type').value);
     fd.append('color', document.getElementById('ff-color').value);
@@ -230,6 +264,12 @@ document.getElementById('adjust-form').addEventListener('submit', function(e) {
     fetch('/filaments/' + id + '/adjust', { method: 'POST', body: fd }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
 });
 
+function copyFilament(id) {
+    fetch('/filaments/' + id + '/copy', { method: 'POST' })
+    .then(function() { window.location.reload(); })
+    .catch(function() { window.location.reload(); });
+}
+
 function deleteFilament(id) {
     appConfirm('{{ _('confirm_delete') }}').then(function(ok) {
         if (!ok) return;
@@ -253,11 +293,134 @@ function deleteFilament(id) {
     });
 }
 
-function filterFilaments() {
+var currentViewMode = 'list';
+var filamentData = {{ filaments_json|tojson }};
+
+function toggleViewMode() {
+    currentViewMode = currentViewMode === 'list' ? 'stack' : 'list';
+    document.getElementById('btn-view-mode').textContent = currentViewMode === 'list' ? '🗂️ Стеки' : '📋 Список';
+    renderFilaments();
+}
+
+function getFilamentKey(f) {
+    return (f.filament_type || '') + '|' + (f.manufacturer || '') + '|' + (f.name || '') + '|' + (f.color || '');
+}
+
+function renderFilaments() {
+    var sortBy = document.getElementById('filament-sort').value;
     var q = document.getElementById('filament-search').value.toLowerCase();
-    document.querySelectorAll('#filament-tbody tr').forEach(function(row) {
-        row.style.display = row.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    
+    var filtered = filamentData.filter(function(f) {
+        return q === '' || JSON.stringify(f).toLowerCase().indexOf(q) !== -1;
     });
+    
+    filtered.sort(function(a, b) {
+        var va = a[sortBy] || '';
+        var vb = b[sortBy] || '';
+        if (typeof va === 'number' && typeof vb === 'number') return vb - va;
+        return String(va).localeCompare(String(vb));
+    });
+    
+    var tbody = document.getElementById('filament-tbody');
+    tbody.innerHTML = '';
+    
+    if (currentViewMode === 'stack') {
+        var stacks = {};
+        filtered.forEach(function(f) {
+            var key = getFilamentKey(f);
+            if (!stacks[key]) {
+                stacks[key] = {
+                    type: f.filament_type,
+                    manufacturer: f.manufacturer,
+                    name: f.name,
+                    color: f.color,
+                    color_hex: f.color_hex,
+                    items: [],
+                    total_remaining: 0,
+                    total_weight: 0
+                };
+            }
+            stacks[key].items.push(f);
+            stacks[key].total_remaining += f.remaining_g;
+            stacks[key].total_weight += f.spool_weight_g;
+        });
+        
+        Object.values(stacks).forEach(function(stack) {
+            var tr = document.createElement('tr');
+            tr.className = 'stack-row';
+            tr.innerHTML = '<td colspan="9" style="padding:0;">' +
+                '<div class="stack-header" onclick="toggleStack(this)">' +
+                '<div class="stack-info">' +
+                (stack.color_hex ? '<span class="color-dot" style="background:#' + stack.color_hex + ';"></span>' : '') +
+                '<span class="stack-title">' + (stack.manufacturer || '') + ' ' + stack.name + ' — ' + stack.color + '</span>' +
+                '<span class="stack-type">' + stack.type + '</span>' +
+                '<span class="stack-count">' + stack.items.length + ' шт</span>' +
+                '<span class="stack-remaining">' + stack.total_remaining.toFixed(0) + ' / ' + stack.total_weight.toFixed(0) + ' г</span>' +
+                '</div>' +
+                '<span class="stack-toggle">▼</span>' +
+                '</div>' +
+                '<div class="stack-items" style="display:none;">' +
+                '<table class="table" style="margin:0;"><tbody>' +
+                stack.items.map(function(f) {
+                    return '<tr id="frow-' + f.id + '" class="' + (f.remaining_g < 200 ? 'row-low' : f.remaining_g < 500 ? 'row-medium' : '') + '">' +
+                        '<td class="select-col" style="display:none;"><input type="checkbox" class="filament-check" value="' + f.id + '" onchange="updateSelectedCount()"></td>' +
+                        '<td>' + (f.manufacturer || '') + '</td>' +
+                        '<td>' + f.name + '</td>' +
+                        '<td>' + f.filament_type + '</td>' +
+                        '<td>' + (f.color_hex ? '<span class="color-dot" style="background:#' + f.color_hex + ';"></span>' : '') + f.color + '</td>' +
+                        '<td><div class="remaining-cell"><span>' + f.remaining_g.toFixed(0) + ' / ' + f.spool_weight_g.toFixed(0) + ' г</span><div class="mini-bar"><div class="mini-fill ' + (f.remaining_g < 200 ? 'bar-low' : f.remaining_g < 500 ? 'bar-medium' : 'bar-ok') + '" style="width:' + (f.remaining_g / f.spool_weight_g * 100).toFixed(0) + '%"></div></div></div></td>' +
+                        '<td>' + f.price_per_g.toFixed(2) + ' руб</td>' +
+                        '<td>' + (f.barcode || '') + '</td>' +
+                        '<td>' +
+                        '<button class="btn btn-small" onclick="openFilamentModal(\'edit\', ' + f.id + ', \'' + (f.name || '').replace(/'/g, "\\'") + '\', \'' + f.filament_type + '\', \'' + (f.color || '').replace(/'/g, "\\'") + '\', ' + f.spool_weight_g + ', ' + f.spool_price + ', \'' + (f.barcode || '') + '\', \'' + (f.color_hex || '') + '\', \'' + (f.manufacturer || '').replace(/'/g, "\\'") + '\')">✏️</button>' +
+                        '<button class="btn btn-small btn-secondary" onclick="copyFilament(' + f.id + ')">📄</button>' +
+                        '<button class="btn btn-small btn-secondary" onclick="openAdjustModal(' + f.id + ', ' + f.remaining_g + ')">⚖️</button>' +
+                        '<button class="btn btn-danger btn-small" onclick="deleteFilament(' + f.id + ')">🗑️</button>' +
+                        '</td></tr>';
+                }).join('') +
+                '</tbody></table></div></td>';
+            tbody.appendChild(tr);
+        });
+    } else {
+        filtered.forEach(function(f) {
+            var tr = document.createElement('tr');
+            tr.id = 'frow-' + f.id;
+            tr.className = f.remaining_g < 200 ? 'row-low' : f.remaining_g < 500 ? 'row-medium' : '';
+            tr.innerHTML = '<td class="select-col" style="display:none;"><input type="checkbox" class="filament-check" value="' + f.id + '" onchange="updateSelectedCount()"></td>' +
+                '<td>' + (f.manufacturer || '') + '</td>' +
+                '<td>' + f.name + '</td>' +
+                '<td>' + f.filament_type + '</td>' +
+                '<td>' + (f.color_hex ? '<span class="color-dot" style="background:#' + f.color_hex + ';"></span>' : '') + f.color + '</td>' +
+                '<td><div class="remaining-cell"><span>' + f.remaining_g.toFixed(0) + ' / ' + f.spool_weight_g.toFixed(0) + ' г</span><div class="mini-bar"><div class="mini-fill ' + (f.remaining_g < 200 ? 'bar-low' : f.remaining_g < 500 ? 'bar-medium' : 'bar-ok') + '" style="width:' + (f.remaining_g / f.spool_weight_g * 100).toFixed(0) + '%"></div></div></div></td>' +
+                '<td>' + f.price_per_g.toFixed(2) + ' руб</td>' +
+                '<td>' + (f.barcode || '') + '</td>' +
+                '<td>' +
+                '<button class="btn btn-small" onclick="openFilamentModal(\'edit\', ' + f.id + ', \'' + (f.name || '').replace(/'/g, "\\'") + '\', \'' + f.filament_type + '\', \'' + (f.color || '').replace(/'/g, "\\'") + '\', ' + f.spool_weight_g + ', ' + f.spool_price + ', \'' + (f.barcode || '') + '\', \'' + (f.color_hex || '') + '\', \'' + (f.manufacturer || '').replace(/'/g, "\\'") + '\')">✏️</button>' +
+                '<button class="btn btn-small btn-secondary" onclick="copyFilament(' + f.id + ')">📄</button>' +
+                '<button class="btn btn-small btn-secondary" onclick="openAdjustModal(' + f.id + ', ' + f.remaining_g + ')">⚖️</button>' +
+                '<button class="btn btn-danger btn-small" onclick="deleteFilament(' + f.id + ')">🗑️</button>' +
+                '</td>';
+            tbody.appendChild(tr);
+        });
+    }
+    
+    document.getElementById('filament-count').textContent = filtered.length + ' {{ _('spools') }}';
+}
+
+function toggleStack(header) {
+    var items = header.nextElementSibling;
+    var toggle = header.querySelector('.stack-toggle');
+    if (items.style.display === 'none') {
+        items.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        items.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+function filterFilaments() {
+    renderFilaments();
 }
 
 function toggleSelectMode() {
@@ -291,5 +454,21 @@ document.addEventListener('keydown', function(e) {
 .color-form-group input[type="color"] { width:44px; height:38px; padding:0; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:none; }
 .color-form-group input[type="color"]::-webkit-color-swatch-wrapper { padding:2px; }
 .color-form-group input[type="color"]::-webkit-color-swatch { border-radius:6px; border:none; }
+.stack-row { cursor:pointer; }
+.stack-header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:var(--glass-bg); transition:background 0.2s; }
+.stack-header:hover { background:var(--glass-bg-hover); }
+.stack-info { display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; }
+.stack-title { font-weight:600; font-size:0.95rem; }
+.stack-type { font-size:0.82rem; color:var(--text-secondary); background:var(--bg-filament-color); padding:0.15rem 0.5rem; border-radius:6px; }
+.stack-count { font-size:0.82rem; color:var(--text-muted); }
+.stack-remaining { font-size:0.82rem; color:var(--text); font-weight:600; }
+.stack-toggle { font-size:0.8rem; color:var(--text-muted); }
+.stack-items { border-top:1px solid var(--border-table); }
+.stack-items .table td { padding:0.5rem 0.75rem; font-size:0.85rem; }
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    renderFilaments();
+});
+</script>
 {% endblock %}

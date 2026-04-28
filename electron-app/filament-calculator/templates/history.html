@@ -6,7 +6,8 @@
 <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
     <input type="text" id="hist-search" placeholder="{{ _('search_hist') }}" style="flex:1; min-width:200px; padding:0.55rem 0.85rem; border:1px solid var(--border); border-radius:10px; background:var(--bg-input); color:var(--text); font-size:0.9rem;" oninput="filterHistory()">
     <button class="btn btn-secondary" id="btn-select-mode" onclick="toggleSelectMode()">☐ {{ _('select') }}</button>
-    <a href="{{ url_for('export_history') }}" class="btn btn-primary" style="white-space:nowrap;">📥 {{ _('export_csv') }}</a>
+    <a href="{{ url_for('export_history') }}" class="btn btn-primary" style="white-space:nowrap;">📥 CSV</a>
+    <a href="{{ url_for('export_history_excel') }}" class="btn btn-primary" style="white-space:nowrap;">📊 Excel</a>
 </div>
 
 <div id="bulk-actions" class="card" style="display:none; margin-bottom:1rem; padding:0.75rem 1rem; background:var(--bg-card); border:1px solid var(--accent);">

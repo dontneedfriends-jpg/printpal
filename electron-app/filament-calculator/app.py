@@ -113,7 +113,7 @@ def before_request():
     request.lang = lang
 
 
-def calculate_cost_details(printer, filaments_data, print_time, base_rate, markup_pct):
+def calculate_cost_details(printer, filaments_data, print_time, base_rate, markup_pct, other_expenses=0):
     """
     Central function for calculating print cost details.
     filaments_data: list of dicts with keys: filament (db row), weight (grams)
@@ -149,7 +149,7 @@ def calculate_cost_details(printer, filaments_data, print_time, base_rate, marku
     printer_dict = dict(printer)
     electricity_cost = print_time * (printer_dict.get("power_watts", 200) / 1000) * electricity_rate
     depreciation_cost = print_time * printer_dict.get("depreciation_per_hour", 0)
-    subtotal = base_rate + total_filament_cost + electricity_cost + depreciation_cost
+    subtotal = base_rate + total_filament_cost + electricity_cost + depreciation_cost + other_expenses
     markup_amount = subtotal * (markup_pct / 100)
     total = subtotal + markup_amount
     
@@ -159,6 +159,7 @@ def calculate_cost_details(printer, filaments_data, print_time, base_rate, marku
         "total_filament_cost": total_filament_cost,
         "electricity_cost": electricity_cost,
         "depreciation_cost": depreciation_cost,
+        "other_expenses": other_expenses,
         "subtotal": subtotal,
         "markup_amount": markup_amount,
         "total": total,
@@ -216,7 +217,8 @@ def index():
             })
 
     db.close()
-    return render_template("index.html", filaments=filaments, printers=printers, today_count=today_count, maintenance=maintenance_info, lang=request.lang)
+    filaments_json = [dict(f) for f in filaments]
+    return render_template("index.html", filaments=filaments, filaments_json=filaments_json, printers=printers, today_count=today_count, maintenance=maintenance_info, lang=request.lang)
 
 
 @app.route("/theme.css")

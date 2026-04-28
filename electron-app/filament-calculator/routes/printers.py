@@ -17,8 +17,8 @@ def printers():
 def add_printer():
     db = get_db()
     db.execute(
-        "INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip) VALUES (?, ?, ?, ?, ?, ?)",
-        (request.form["name"], safe_float(request.form["power_watts"], 200, 1, 10000), safe_float(request.form["purchase_price"], 0, 0, 1000000), safe_float(request.form["depreciation_per_hour"], 0, 0, 100), request.form.get("ip_address", ""), request.form.get("camera_ip", ""))
+        "INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip, commissioning_date, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (request.form["name"], safe_float(request.form["power_watts"], 200, 1, 10000), safe_float(request.form["purchase_price"], 0, 0, 1000000), safe_float(request.form["depreciation_per_hour"], 0, 0, 100), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), request.form.get("commissioning_date", ""), request.form.get("tags", ""))
     )
     db.commit()
     db.close()
@@ -31,14 +31,31 @@ def add_printer():
 def edit_printer(id):
     db = get_db()
     db.execute(
-        "UPDATE printers SET name=?, power_watts=?, purchase_price=?, depreciation_per_hour=?, ip_address=?, camera_ip=? WHERE id=?",
-        (request.form["name"], safe_float(request.form["power_watts"], 200, 1, 10000), safe_float(request.form["purchase_price"], 0, 0, 1000000), safe_float(request.form["depreciation_per_hour"], 0, 0, 100), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), id)
+        "UPDATE printers SET name=?, power_watts=?, purchase_price=?, depreciation_per_hour=?, ip_address=?, camera_ip=?, commissioning_date=?, tags=? WHERE id=?",
+        (request.form["name"], safe_float(request.form["power_watts"], 200, 1, 10000), safe_float(request.form["purchase_price"], 0, 0, 1000000), safe_float(request.form["depreciation_per_hour"], 0, 0, 100), request.form.get("ip_address", ""), request.form.get("camera_ip", ""), request.form.get("commissioning_date", ""), request.form.get("tags", ""), id)
     )
     db.commit()
     db.close()
     if request.headers.get("X-Requested-With") == "fetch":
         return "ok"
     return redirect(url_for(".printers"))
+
+
+@printers_bp.route("/printers/<int:id>/copy", methods=["POST"])
+def copy_printer(id):
+    db = get_db()
+    row = db.execute("SELECT * FROM printers WHERE id = ?", (id,)).fetchone()
+    if not row:
+        db.close()
+        return "not found", 404
+    data = dict(row)
+    db.execute(
+        "INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip, maintenance_hours, commissioning_date, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (data["name"] + " (копия)", data["power_watts"], data["purchase_price"], data["depreciation_per_hour"], data.get("ip_address", ""), data.get("camera_ip", ""), data.get("maintenance_hours", 0), data.get("commissioning_date", ""), data.get("tags", ""))
+    )
+    db.commit()
+    db.close()
+    return "ok", 200
 
 
 @printers_bp.route("/printers/<int:id>/delete", methods=["POST"])
@@ -60,8 +77,8 @@ def delete_printer(id):
 def restore_printer():
     data = request.get_json()
     db = get_db()
-    db.execute("INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip, maintenance_hours) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (data["name"], data["power_watts"], data["purchase_price"], data["depreciation_per_hour"], data.get("ip_address", ""), data.get("camera_ip", ""), data.get("maintenance_hours", 0)))
+    db.execute("INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, camera_ip, maintenance_hours, commissioning_date, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (data["name"], data["power_watts"], data["purchase_price"], data["depreciation_per_hour"], data.get("ip_address", ""), data.get("camera_ip", ""), data.get("maintenance_hours", 0), data.get("commissioning_date", ""), data.get("tags", "")))
     db.commit()
     db.close()
     return "ok", 200
