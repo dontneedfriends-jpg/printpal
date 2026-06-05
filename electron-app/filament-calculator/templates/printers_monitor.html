@@ -13,18 +13,43 @@
             {% endfor %}
         </div>
         <div class="monitor-actions">
+            <button id="mode-toggle" class="btn btn-small btn-secondary" onclick="toggleMonitorMode()" title="Toggle view mode">🖥️ Web UI</button>
             <a id="klipper-link" href="/printers/{{ printers[0].id }}/klipper" class="btn btn-small btn-primary" style="background:var(--accent);">Klipper</a>
             <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-secondary">{{ _('open_browser') }}</a>
             <a id="cam-link" href="#" target="_blank" class="btn btn-small btn-secondary" style="display:none;">📷 {{ _('open_camera') }}</a>
         </div>
     </div>
-    <div class="monitor-viewer-v2">
+    <div class="monitor-viewer-v2" id="viewer">
         {% for p in printers %}
-        <iframe class="monitor-iframe-v2 {% if loop.first %}active{% endif %}" id="iframe-{{ loop.index }}" src="http://{{ p.ip_address }}" title="{{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
+        <iframe class="monitor-iframe-v2 webui-frame {% if loop.first %}active{% endif %}" id="iframe-webui-{{ loop.index }}" src="http://{{ p.ip_address }}" title="Web UI {{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
+        <iframe class="monitor-iframe-v2 wrapper-frame {% if loop.first %}active{% endif %}" id="iframe-wrapper-{{ loop.index }}" src="/printers/{{ p.id }}/klipper?embedded=1" title="Klipper {{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
         {% endfor %}
     </div>
 </div>
 <script>
+var monitorMode = localStorage.getItem('monitor_mode') || 'wrapper';
+
+function applyMonitorMode() {
+    var btn = document.getElementById('mode-toggle');
+    var webuiFrames = document.querySelectorAll('.webui-frame');
+    var wrapperFrames = document.querySelectorAll('.wrapper-frame');
+    if (monitorMode === 'webui') {
+        btn.textContent = '🖥️ Web UI';
+        webuiFrames.forEach(f => f.style.display = f.classList.contains('active') ? 'block' : 'none');
+        wrapperFrames.forEach(f => f.style.display = 'none');
+    } else {
+        btn.textContent = '🎛️ Control';
+        webuiFrames.forEach(f => f.style.display = 'none');
+        wrapperFrames.forEach(f => f.style.display = f.classList.contains('active') ? 'block' : 'none');
+    }
+}
+
+function toggleMonitorMode() {
+    monitorMode = monitorMode === 'webui' ? 'wrapper' : 'webui';
+    localStorage.setItem('monitor_mode', monitorMode);
+    applyMonitorMode();
+}
+
 function selectPrinter(el) {
     document.querySelectorAll('.monitor-printer-chip').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
@@ -34,8 +59,10 @@ function selectPrinter(el) {
     const idx = Array.from(document.querySelectorAll('.monitor-printer-chip')).indexOf(el);
     
     document.querySelectorAll('.monitor-iframe-v2').forEach(f => f.classList.remove('active'));
-    const iframe = document.getElementById('iframe-' + (idx + 1));
-    if (iframe) iframe.classList.add('active');
+    const webuiFrame = document.getElementById('iframe-webui-' + (idx + 1));
+    const wrapperFrame = document.getElementById('iframe-wrapper-' + (idx + 1));
+    if (webuiFrame) webuiFrame.classList.add('active');
+    if (wrapperFrame) wrapperFrame.classList.add('active');
     
     document.getElementById('direct-link').href = 'http://' + ip;
     document.getElementById('klipper-link').href = '/printers/' + id + '/klipper';
@@ -47,7 +74,11 @@ function selectPrinter(el) {
     } else {
         camLink.style.display = 'none';
     }
+    
+    applyMonitorMode();
 }
+
+applyMonitorMode();
 </script>
 <style>
 .monitor-layout-v2 {

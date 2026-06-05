@@ -1,4 +1,4 @@
-var CACHE = 'printpal-v3';
+var CACHE = 'printpal-v4';
 var STATIC_URLS = [
   '/',
   '/static/style.css',
