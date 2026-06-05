@@ -7,9 +7,15 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "cd ../printpal-android && gradlew assembleDebug"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0"
   },
@@ -34,7 +40,10 @@
       "!filament-calculator/**/__pycache__/**/*",
       "!filament-calculator/**/*.pyc",
       "!filament-calculator/find_ru.py",
-      "!filament-calculator/ru_strings.txt"
+      "!filament-calculator/ru_strings.txt",
+      "!android-app",
+      "!android-app/**/*",
+      "!capacitor.config.ts"
     ],
     "extraResources": [
       {
@@ -56,7 +65,9 @@
       {
         "from": "python",
         "to": "python",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "asar": true,
@@ -65,7 +76,14 @@
       "**/filament-calculator/**/*"
     ],
     "win": {
-      "target": [{"target": "portable", "arch": ["x64"]}],
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": null
     },
     "portable": {

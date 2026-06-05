@@ -12,7 +12,7 @@ const CONFIG = {
     minHeight: 600,
   },
   flask: {
-    host: process.env.FLASK_HOST || "127.0.0.1",
+    host: process.env.FLASK_HOST || "0.0.0.0",
     port: parseInt(process.env.FLASK_PORT, 10) || 5000,
     maxRetries: 30,
     retryInterval: 500,
@@ -228,11 +228,11 @@ async function setupAndStart() {
     flaskProcess.on("close", () => { flaskProcess = null; });
     flaskProcess.on("error", (e) => { log("[SPAWN ERR]", e); flaskProcess = null; });
 
-    const url = `http://${CONFIG.flask.host}:${CONFIG.flask.port}`;
-    log("Will wait for Flask at:", url);
-    waitForServer(url, CONFIG.flask.maxRetries, CONFIG.flask.retryInterval, () => {
+    const flaskUrl = `http://127.0.0.1:${CONFIG.flask.port}`;
+    log("Will wait for Flask at:", flaskUrl);
+    waitForServer(flaskUrl, CONFIG.flask.maxRetries, CONFIG.flask.retryInterval, () => {
       log("Flask server is up, loading URL...");
-      mainWindow.loadURL(url);
+      mainWindow.loadURL(flaskUrl);
     }, () => {
       log("Flask failed to start, loading error page");
       mainWindow.loadFile(path.join(__dirname, "error.html"));

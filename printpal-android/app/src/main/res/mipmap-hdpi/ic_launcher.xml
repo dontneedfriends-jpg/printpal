@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#4361EE"
+        android:pathData="M0,0h48v48h-48z" />
+    <!-- Trophy -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,8 C24,8 20,14 16,16 C12,18 8,18 8,18 C8,18 10,24 14,26 C16,27 18,27.5 20,27 C22,29 24,30 24,31 C24,30 26,29 28,27 C30,27.5 32,27 34,26 C38,24 40,18 40,18 C40,18 36,18 32,16 C28,14 24,8 24,8Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,33 L20,37 L24,36 L28,37 L30,33" />
+</vector>

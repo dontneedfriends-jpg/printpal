@@ -1,7 +1,7 @@
 from flask import Blueprint, request, Response, flash, redirect, url_for, jsonify, render_template
 from database import get_db
 from config import UPLOAD_DIR
-from utils import safe_float
+from utils import safe_float, safe_int
 from translations import t as _t
 import json
 
@@ -11,9 +11,13 @@ filaments_bp = Blueprint("filaments", __name__)
 @filaments_bp.route("/filaments")
 def filaments():
     db = get_db()
-    filament_list = db.execute("SELECT *, CASE WHEN spool_weight_g > 0 THEN (spool_price / spool_weight_g) ELSE 0 END as price_per_g FROM filaments ORDER BY name").fetchall()
+    filament_list = db.execute("SELECT f.*, CASE WHEN f.spool_weight_g > 0 THEN (f.spool_price / f.spool_weight_g) ELSE 0 END as price_per_g, p.name as printer_name FROM filaments f LEFT JOIN printers p ON f.printer_id = p.id ORDER BY f.name").fetchall()
     db.close()
     filaments_json = [dict(f) for f in filament_list]
+
+    db2 = get_db()
+    printers_list = db2.execute("SELECT id, name FROM printers ORDER BY name").fetchall()
+    db2.close()
 
     from database import init_shpoolken_db, is_shpoolken_loaded, get_shpoolken_manufacturers, get_shpoolken_materials, get_shpoolken_stats
     init_shpoolken_db()
@@ -25,6 +29,7 @@ def filaments():
         "filaments.html",
         filaments=filament_list,
         filaments_json=filaments_json,
+        printers=printers_list,
         shpoolken_loaded=loaded,
         shpoolken_manufacturers=manufacturers,
         shpoolken_materials=materials,
@@ -37,9 +42,10 @@ def filaments():
 def add_filament():
     db = get_db()
     weight = safe_float(request.form["spool_weight_g"], 1000)
+    printer_id = safe_int(request.form.get("printer_id"), None)
     db.execute(
-        "INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, color_hex, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (request.form.get("manufacturer", ""), request.form["name"], request.form["filament_type"], request.form["color"], weight, safe_float(request.form["spool_price"]), weight, request.form.get("color_hex", ""), request.form.get("barcode", ""))
+        "INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, color_hex, barcode, printer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (request.form.get("manufacturer", ""), request.form["name"], request.form["filament_type"], request.form["color"], weight, safe_float(request.form["spool_price"]), weight, request.form.get("color_hex", ""), request.form.get("barcode", ""), printer_id)
     )
     db.commit()
     db.close()
@@ -49,9 +55,10 @@ def add_filament():
 @filaments_bp.route("/filaments/<int:id>/edit", methods=["POST"])
 def edit_filament(id):
     db = get_db()
+    printer_id = safe_int(request.form.get("printer_id"), None)
     db.execute(
-        "UPDATE filaments SET manufacturer=?, name=?, filament_type=?, color=?, spool_weight_g=?, spool_price=?, color_hex=?, barcode=? WHERE id=?",
-        (request.form.get("manufacturer", ""), request.form["name"], request.form["filament_type"], request.form["color"], safe_float(request.form["spool_weight_g"], 1000), safe_float(request.form["spool_price"]), request.form.get("color_hex", ""), request.form.get("barcode", ""), id)
+        "UPDATE filaments SET manufacturer=?, name=?, filament_type=?, color=?, spool_weight_g=?, spool_price=?, color_hex=?, barcode=?, printer_id=? WHERE id=?",
+        (request.form.get("manufacturer", ""), request.form["name"], request.form["filament_type"], request.form["color"], safe_float(request.form["spool_weight_g"], 1000), safe_float(request.form["spool_price"]), request.form.get("color_hex", ""), request.form.get("barcode", ""), printer_id, id)
     )
     db.commit()
     db.close()
@@ -86,8 +93,8 @@ def delete_filament(id):
 def restore_filament():
     data = request.get_json()
     db = get_db()
-    db.execute("INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, density, diameter, color_hex, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (data.get("manufacturer", ""), data["name"], data["filament_type"], data["color"], data["spool_weight_g"], data["spool_price"], data["remaining_g"], data.get("density", 0), data.get("diameter", 1.75), data.get("color_hex", ""), data.get("barcode", "")))
+    db.execute("INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, density, diameter, color_hex, barcode, printer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (data.get("manufacturer", ""), data["name"], data["filament_type"], data["color"], data["spool_weight_g"], data["spool_price"], data["remaining_g"], data.get("density", 0), data.get("diameter", 1.75), data.get("color_hex", ""), data.get("barcode", ""), data.get("printer_id")))
     db.commit()
     db.close()
     return "ok", 200
@@ -120,8 +127,8 @@ def copy_filament(id):
     new_name = base_name + " #" + str(max_num + 1)
     
     db.execute(
-        "INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, density, diameter, color_hex, barcode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (data.get("manufacturer", ""), new_name, data["filament_type"], data["color"], data["spool_weight_g"], data["spool_price"], data["remaining_g"], data.get("density", 0), data.get("diameter", 1.75), data.get("color_hex", ""), data.get("barcode", ""))
+        "INSERT INTO filaments (manufacturer, name, filament_type, color, spool_weight_g, spool_price, remaining_g, density, diameter, color_hex, barcode, printer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (data.get("manufacturer", ""), new_name, data["filament_type"], data["color"], data["spool_weight_g"], data["spool_price"], data["remaining_g"], data.get("density", 0), data.get("diameter", 1.75), data.get("color_hex", ""), data.get("barcode", ""), data.get("printer_id"))
     )
     db.commit()
     db.close()

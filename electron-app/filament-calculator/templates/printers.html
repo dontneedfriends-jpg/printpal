@@ -55,9 +55,12 @@
                 <td>{{ p.power_watts }} {{ _('watts') }}</td>
                 <td>{{ "%.2f"|format(p.depreciation_per_hour) }} {{ _('rub') }}</td>
                 <td>
-                    <button class="btn btn-small" onclick="editPrinter({{ p.id }}, '{{ p.name|replace("'","\\'") }}', {{ p.power_watts }}, {{ p.purchase_price }}, {{ p.depreciation_per_hour }}, '{{ p.ip_address|default('', true)|replace("'","\\'") }}', '{{ p.camera_ip|default('', true)|replace("'","\\'") }}', '{{ p.commissioning_date|default('', true) }}', '{{ p.tags|default('', true)|replace("'","\\'") }}')">✏️</button>
+                    <button class="btn btn-small" onclick="editPrinter({{ p.id }}, '{{ p.name|replace("'","\\'") }}', {{ p.power_watts }}, {{ p.purchase_price }}, {{ p.depreciation_per_hour }}, '{{ p.ip_address|default('', true)|replace("'","\\'") }}', '{{ p.camera_ip|default('', true)|replace("'","\\'") }}', '{{ p.commissioning_date|default('', true) }}', '{{ p.tags|default('', true)|replace("'","\\'") }}', '{{ p.moonraker_port|default(7125, true) }}', '{{ p.moonraker_api_key|default('', true)|replace("'","\\'") }}', '{{ p.filament_diameter|default(1.75, true) }}')">✏️</button>
                     <button class="btn btn-small btn-secondary" onclick="copyPrinter({{ p.id }})">📄</button>
                     <button class="btn btn-small" style="background:var(--accent-light); color:var(--accent);" onclick="openMaintenance({{ p.id }}, '{{ p.name|replace("'","\\'") }}')">🔧</button>
+                    {% if p.ip_address %}
+                    <a href="{{ url_for('klipper_control', id=p.id) }}" class="btn btn-small btn-primary">Klipper</a>
+                    {% endif %}
                     <button class="btn btn-danger btn-small" onclick="deletePrinter({{ p.id }})">🗑️</button>
                 </td>
             </tr>
@@ -109,6 +112,18 @@
                 <label>Теги <span class="optional">{{ _('optional') }}</span></label>
                 <input type="text" id="f-tags" placeholder="Комната 1, Рабочий, VIP">
             </div>
+            <div class="form-group">
+                <label>Moonraker port <span class="optional">{{ _('optional') }}</span></label>
+                <input type="number" id="f-mport" value="7125" min="1" max="65535">
+            </div>
+            <div class="form-group">
+                <label>Moonraker API Key <span class="optional">{{ _('optional') }}</span></label>
+                <input type="text" id="f-apikey" placeholder="API key для авторизации">
+            </div>
+            <div class="form-group">
+                <label>{{ _('shpoolken_diameter') }} филамента (мм) <span class="optional">{{ _('optional') }}</span></label>
+                <input type="number" id="f-fdiam" value="1.75" step="0.05" min="0.5" max="5.0">
+            </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeModal()">{{ _('cancel') }}</button>
                 <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
@@ -130,6 +145,9 @@ function openModal(mode, data) {
     document.getElementById('f-cam').value = '';
     document.getElementById('f-commissioning').value = '';
     document.getElementById('f-tags').value = '';
+    document.getElementById('f-mport').value = '7125';
+    document.getElementById('f-apikey').value = '';
+    document.getElementById('f-fdiam').value = '1.75';
     document.getElementById('modal-title').textContent = '{{ _('add_printer') }}';
     if (mode === 'edit' && data) {
         document.getElementById('form-id').value = data.id;
@@ -141,6 +159,9 @@ function openModal(mode, data) {
         document.getElementById('f-cam').value = data.cam;
         document.getElementById('f-commissioning').value = data.commissioning || '';
         document.getElementById('f-tags').value = data.tags || '';
+        document.getElementById('f-mport').value = data.mport || 7125;
+        document.getElementById('f-apikey').value = data.apikey || '';
+        document.getElementById('f-fdiam').value = data.fdiam || 1.75;
         document.getElementById('modal-title').textContent = '{{ _('edit_printer') }}';
     }
     setTimeout(function() { document.getElementById('f-name').focus(); }, 100);
@@ -150,8 +171,8 @@ function closeModal() {
     document.getElementById('printer-modal').style.display = 'none';
 }
 
-function editPrinter(id, name, watts, price, depr, ip, cam, commissioning, tags) {
-    openModal('edit', { id: id, name: name, watts: watts, price: price, depr: depr, ip: ip, cam: cam, commissioning: commissioning, tags: tags });
+function editPrinter(id, name, watts, price, depr, ip, cam, commissioning, tags, mport, apikey, fdiam) {
+    openModal('edit', { id: id, name: name, watts: watts, price: price, depr: depr, ip: ip, cam: cam, commissioning: commissioning, tags: tags, mport: mport || 7125, apikey: apikey || '', fdiam: fdiam || 1.75 });
 }
 
 function copyPrinter(id) {
@@ -241,6 +262,9 @@ document.getElementById('printer-form').addEventListener('submit', function(e) {
     fd.append('camera_ip', document.getElementById('f-cam').value);
     fd.append('commissioning_date', document.getElementById('f-commissioning').value);
     fd.append('tags', document.getElementById('f-tags').value);
+    fd.append('moonraker_port', document.getElementById('f-mport').value);
+    fd.append('moonraker_api_key', document.getElementById('f-apikey').value);
+    fd.append('filament_diameter', document.getElementById('f-fdiam').value);
 
     var url = id ? '/printers/' + id + '/edit' : '/printers/add';
     fetch(url, { method: 'POST', body: fd })

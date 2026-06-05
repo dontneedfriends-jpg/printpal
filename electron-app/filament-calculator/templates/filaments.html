@@ -62,6 +62,7 @@
                 <th>{{ _('remaining') }}</th>
                 <th>{{ _('price_per_g') }}</th>
                 <th>Штрихкод</th>
+                <th>Принтер</th>
                 <th style="width:200px;">{{ _('actions') }}</th>
             </tr>
         </thead>
@@ -88,8 +89,9 @@
                 </td>
                 <td>{{ "%.2f"|format(f.price_per_g) }} руб</td>
                 <td>{{ f.barcode or '' }}</td>
+                <td>{{ f.printer_name or '' }}</td>
                 <td>
-                    <button class="btn btn-small" onclick="openFilamentModal('edit', {{ f.id }}, '{{ f.name|replace("'","\\'") }}', '{{ f.filament_type }}', '{{ f.color|replace("'","\\'") }}', {{ f.spool_weight_g }}, {{ f.spool_price }}, '{{ f.barcode|default('', true) }}', '{{ f.color_hex|default('', true) }}', '{{ f.manufacturer|default('', true)|replace("'","\\'") }}')">✏️</button>
+                    <button class="btn btn-small" onclick="openFilamentModal('edit', {{ f.id }}, '{{ f.name|replace("'","\\'") }}', '{{ f.filament_type }}', '{{ f.color|replace("'","\\'") }}', {{ f.spool_weight_g }}, {{ f.spool_price }}, '{{ f.barcode|default('', true) }}', '{{ f.color_hex|default('', true) }}', '{{ f.manufacturer|default('', true)|replace("'","\\'") }}', {{ f.printer_id or '' }})">✏️</button>
                     <button class="btn btn-small btn-secondary" onclick="copyFilament({{ f.id }})">📄</button>
                     <button class="btn btn-small btn-secondary" onclick="openAdjustModal({{ f.id }}, {{ f.remaining_g }})">⚖️</button>
                     <button class="btn btn-danger btn-small" onclick="deleteFilament({{ f.id }})">🗑️</button>
@@ -256,6 +258,15 @@
                 <label>Штрихкод</label>
                 <input type="text" id="ff-barcode" placeholder="1234567890123">
             </div>
+            <div class="form-group">
+                <label>{{ _('printer') }}</label>
+                <select id="ff-printer">
+                    <option value="">{{ _('none') }}</option>
+                    {% for p in printers %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="closeFilamentModal()">{{ _('cancel') }}</button>
                 <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
@@ -300,7 +311,7 @@ function updateColorPickerFromText() {
     }
 }
 
-function openFilamentModal(mode, id, name, type, color, weight, price, barcode, colorHex, manufacturer) {
+function openFilamentModal(mode, id, name, type, color, weight, price, barcode, colorHex, manufacturer, printerId) {
     var m = document.getElementById('filament-modal');
     m.style.display = 'flex';
     document.getElementById('fform-id').value = '';
@@ -313,6 +324,7 @@ function openFilamentModal(mode, id, name, type, color, weight, price, barcode, 
     document.getElementById('ff-weight').value = '1000';
     document.getElementById('ff-price').value = '1500';
     document.getElementById('ff-barcode').value = '';
+    document.getElementById('ff-printer').value = '';
     document.getElementById('fmodal-title').textContent = '{{ _('add_filament') }}';
     if (mode === 'edit') {
         document.getElementById('fform-id').value = id;
@@ -323,6 +335,7 @@ function openFilamentModal(mode, id, name, type, color, weight, price, barcode, 
         document.getElementById('ff-weight').value = weight;
         document.getElementById('ff-price').value = price;
         document.getElementById('ff-barcode').value = barcode || '';
+        document.getElementById('ff-printer').value = printerId || '';
         document.getElementById('fmodal-title').textContent = '{{ _('edit_filament') }}';
         var hex = colorHex || '';
         if (hex) {
@@ -349,6 +362,7 @@ document.getElementById('filament-form').addEventListener('submit', function(e) 
     fd.append('spool_weight_g', document.getElementById('ff-weight').value);
     fd.append('spool_price', document.getElementById('ff-price').value);
     fd.append('barcode', document.getElementById('ff-barcode').value);
+    fd.append('printer_id', document.getElementById('ff-printer').value);
     var url = id ? '/filaments/' + id + '/edit' : '/filaments/add';
     fetch(url, { method: 'POST', body: fd }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
 });
@@ -459,7 +473,7 @@ function renderFilaments() {
         Object.values(stacks).forEach(function(stack) {
             var tr = document.createElement('tr');
             tr.className = 'stack-row';
-            tr.innerHTML = '<td colspan="9" style="padding:0;">' +
+            tr.innerHTML = '<td colspan="10" style="padding:0;">' +
                 '<div class="stack-header" onclick="toggleStack(this)">' +
                 '<div class="stack-info">' +
                 (stack.color_hex ? '<span class="color-dot" style="background:#' + stack.color_hex + ';"></span>' : '') +
@@ -482,8 +496,9 @@ function renderFilaments() {
                         '<td><div class="remaining-cell"><span>' + f.remaining_g.toFixed(0) + ' / ' + f.spool_weight_g.toFixed(0) + ' г</span><div class="mini-bar"><div class="mini-fill ' + (f.remaining_g < 200 ? 'bar-low' : f.remaining_g < 500 ? 'bar-medium' : 'bar-ok') + '" style="width:' + (f.remaining_g / f.spool_weight_g * 100).toFixed(0) + '%"></div></div></div></td>' +
                         '<td>' + f.price_per_g.toFixed(2) + ' руб</td>' +
                         '<td>' + (f.barcode || '') + '</td>' +
+                        '<td>' + (f.printer_name || '') + '</td>' +
                         '<td>' +
-                        '<button class="btn btn-small" onclick="openFilamentModal(\'edit\', ' + f.id + ', \'' + (f.name || '').replace(/'/g, "\\'") + '\', \'' + f.filament_type + '\', \'' + (f.color || '').replace(/'/g, "\\'") + '\', ' + f.spool_weight_g + ', ' + f.spool_price + ', \'' + (f.barcode || '') + '\', \'' + (f.color_hex || '') + '\', \'' + (f.manufacturer || '').replace(/'/g, "\\'") + '\')">✏️</button>' +
+                        '<button class="btn btn-small" onclick="openFilamentModal(\'edit\', ' + f.id + ', \'' + (f.name || '').replace(/'/g, "\\'") + '\', \'' + f.filament_type + '\', \'' + (f.color || '').replace(/'/g, "\\'") + '\', ' + f.spool_weight_g + ', ' + f.spool_price + ', \'' + (f.barcode || '') + '\', \'' + (f.color_hex || '') + '\', \'' + (f.manufacturer || '').replace(/'/g, "\\'") + '\', ' + (f.printer_id || '') + ')">✏️</button>' +
                         '<button class="btn btn-small btn-secondary" onclick="copyFilament(' + f.id + ')">📄</button>' +
                         '<button class="btn btn-small btn-secondary" onclick="openAdjustModal(' + f.id + ', ' + f.remaining_g + ')">⚖️</button>' +
                         '<button class="btn btn-danger btn-small" onclick="deleteFilament(' + f.id + ')">🗑️</button>' +
@@ -505,8 +520,9 @@ function renderFilaments() {
                 '<td><div class="remaining-cell"><span>' + f.remaining_g.toFixed(0) + ' / ' + f.spool_weight_g.toFixed(0) + ' г</span><div class="mini-bar"><div class="mini-fill ' + (f.remaining_g < 200 ? 'bar-low' : f.remaining_g < 500 ? 'bar-medium' : 'bar-ok') + '" style="width:' + (f.remaining_g / f.spool_weight_g * 100).toFixed(0) + '%"></div></div></div></td>' +
                 '<td>' + f.price_per_g.toFixed(2) + ' руб</td>' +
                 '<td>' + (f.barcode || '') + '</td>' +
+                '<td>' + (f.printer_name || '') + '</td>' +
                 '<td>' +
-                '<button class="btn btn-small" onclick="openFilamentModal(\'edit\', ' + f.id + ', \'' + (f.name || '').replace(/'/g, "\\'") + '\', \'' + f.filament_type + '\', \'' + (f.color || '').replace(/'/g, "\\'") + '\', ' + f.spool_weight_g + ', ' + f.spool_price + ', \'' + (f.barcode || '') + '\', \'' + (f.color_hex || '') + '\', \'' + (f.manufacturer || '').replace(/'/g, "\\'") + '\')">✏️</button>' +
+                '<button class="btn btn-small" onclick="openFilamentModal(\'edit\', ' + f.id + ', \'' + (f.name || '').replace(/'/g, "\\'") + '\', \'' + f.filament_type + '\', \'' + (f.color || '').replace(/'/g, "\\'") + '\', ' + f.spool_weight_g + ', ' + f.spool_price + ', \'' + (f.barcode || '') + '\', \'' + (f.color_hex || '') + '\', \'' + (f.manufacturer || '').replace(/'/g, "\\'") + '\', ' + (f.printer_id || '') + ')">✏️</button>' +
                 '<button class="btn btn-small btn-secondary" onclick="copyFilament(' + f.id + ')">📄</button>' +
                 '<button class="btn btn-small btn-secondary" onclick="openAdjustModal(' + f.id + ', ' + f.remaining_g + ')">⚖️</button>' +
                 '<button class="btn btn-danger btn-small" onclick="deleteFilament(' + f.id + ')">🗑️</button>' +

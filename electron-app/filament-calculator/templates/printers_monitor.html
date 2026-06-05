@@ -13,7 +13,8 @@
             {% endfor %}
         </div>
         <div class="monitor-actions">
-            <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-primary">{{ _('open_browser') }}</a>
+            <a id="klipper-link" href="/printers/{{ printers[0].id }}/klipper" class="btn btn-small btn-primary" style="background:var(--accent);">Klipper</a>
+            <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-secondary">{{ _('open_browser') }}</a>
             <a id="cam-link" href="#" target="_blank" class="btn btn-small btn-secondary" style="display:none;">📷 {{ _('open_camera') }}</a>
         </div>
     </div>
@@ -29,6 +30,7 @@ function selectPrinter(el) {
     el.classList.add('active');
     const ip = el.dataset.ip;
     const cam = el.dataset.cam;
+    const id = el.dataset.id;
     const idx = Array.from(document.querySelectorAll('.monitor-printer-chip')).indexOf(el);
     
     document.querySelectorAll('.monitor-iframe-v2').forEach(f => f.classList.remove('active'));
@@ -36,6 +38,7 @@ function selectPrinter(el) {
     if (iframe) iframe.classList.add('active');
     
     document.getElementById('direct-link').href = 'http://' + ip;
+    document.getElementById('klipper-link').href = '/printers/' + id + '/klipper';
     
     var camLink = document.getElementById('cam-link');
     if (cam) {

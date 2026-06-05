@@ -279,6 +279,24 @@ def about():
     return render_template("about.html", lang=request.lang)
 
 
+@app.route("/manifest.json")
+def manifest():
+    return app.send_static_file("manifest.json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    resp = app.send_static_file("sw.js")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.route("/static/icons/<path:filename>")
+def pwa_icons(filename):
+    return send_from_directory(os.path.join(app.static_folder, "icons"), filename)
+
+
 # Register blueprints
 from routes.printers import printers_bp
 from routes.filaments import filaments_bp

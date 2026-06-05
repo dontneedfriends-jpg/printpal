@@ -9,7 +9,7 @@
             <label for="printer_id">{{ _('printer') }}</label>
             <select id="printer_id" name="printer_id" required>
                 {% for p in printers %}
-                <option value="{{ p.id }}" {% if preview and preview.printer.id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.power_watts }} {{ _('watts') }})</option>
+                <option value="{{ p.id }}" {% if preview and preview.printer.id == p.id %}selected{% elif klipper_printer_id and klipper_printer_id|string == p.id|string %}selected{% endif %}>{{ p.name }} ({{ p.power_watts }} {{ _('watts') }})</option>
                 {% endfor %}
             </select>
         </div>
@@ -44,7 +44,7 @@
                         <div class="fp-trigger" onclick="toggleFilamentTree(this)">Выберите филамент...</div>
                         <div class="fp-dropdown" style="display:none;"></div>
                     </div>
-                    <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required>
+                    <input type="number" name="filament_weight" step="0.1" placeholder="{{ _('grams') }}" required value="{{ klipper_weight if klipper_weight else '' }}">
                     <button type="button" class="add-filament-btn" onclick="addFilamentRow()" title="Добавить">+</button>
                 </div>
                 {% endif %}
@@ -52,11 +52,11 @@
         </div>
         <div class="form-group">
             <label for="model_name">{{ _('model_name') }}</label>
-            <input type="text" id="model_name" name="model_name" required placeholder="Benchy" value="{{ preview.model_name if preview else '' }}">
+            <input type="text" id="model_name" name="model_name" required placeholder="Benchy" value="{{ preview.model_name if preview else klipper_name }}">
         </div>
         <div class="form-group">
             <label for="print_time_hours">{{ _('print_time') }}</label>
-            <input type="number" id="print_time_hours" name="print_time_hours" step="0.1" required placeholder="3.5" value="{{ preview.print_time if preview else '' }}">
+            <input type="number" id="print_time_hours" name="print_time_hours" step="0.1" required placeholder="3.5" value="{{ preview.print_time if preview else klipper_hours }}">
         </div>
         <div class="form-group">
             <label for="base_rate">{{ _('base_rate') }}</label>

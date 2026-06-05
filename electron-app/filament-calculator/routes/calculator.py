@@ -17,6 +17,13 @@ def calculator():
     db.close()
     filaments_json = [dict(f) for f in all_filaments]
     from app import get_setting
+
+    # Support query params from Klipper auto-calc
+    q_name = request.args.get("name", "")
+    q_hours = request.args.get("hours", "")
+    q_weight = request.args.get("weight", "")
+    q_printer_id = request.args.get("printer_id", "")
+
     return render_template(
         "calculator.html",
         printers=all_printers,
@@ -26,6 +33,10 @@ def calculator():
         default_base=get_setting("base_rate"),
         default_markup=get_setting("markup_percent"),
         preview=None,
+        klipper_name=q_name,
+        klipper_hours=q_hours,
+        klipper_weight=q_weight,
+        klipper_printer_id=q_printer_id,
         lang=request.lang,
     )
 

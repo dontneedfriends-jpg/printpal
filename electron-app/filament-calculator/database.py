@@ -121,6 +121,14 @@ def init_db():
             conn.execute("ALTER TABLE printers ADD COLUMN commissioning_date TEXT DEFAULT ''")
         if "tags" not in columns:
             conn.execute("ALTER TABLE printers ADD COLUMN tags TEXT DEFAULT ''")
+        if "moonraker_port" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN moonraker_port INTEGER DEFAULT 7125")
+        if "moonraker_api_key" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN moonraker_api_key TEXT DEFAULT ''")
+        if "filament_diameter" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN filament_diameter REAL DEFAULT 1.75")
+        if "active_filament_id" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN active_filament_id INTEGER DEFAULT NULL REFERENCES filaments(id)")
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration printers columns: {e}")
 
@@ -155,6 +163,8 @@ def init_db():
             conn.execute("ALTER TABLE filaments ADD COLUMN barcode TEXT DEFAULT ''")
         if "manufacturer" not in columns:
             conn.execute("ALTER TABLE filaments ADD COLUMN manufacturer TEXT DEFAULT ''")
+        if "printer_id" not in columns:
+            conn.execute("ALTER TABLE filaments ADD COLUMN printer_id INTEGER DEFAULT NULL REFERENCES printers(id)")
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration filaments columns: {e}")
 

@@ -1,0 +1,796 @@
+{% extends "base.html" %}
+{% block title %}{{ _('klipper_control') }} - {{ printer.name }} - PrintPAL{% endblock %}
+{% block content %}
+<div class="klipper-topbar">
+    <a href="{{ url_for('printers') }}" class="btn btn-small btn-secondary">&larr; {{ _('nav_printers') }}</a>
+    <h2 style="margin:0; font-size:1.1rem;">{{ printer.name }}</h2>
+    <span class="klipper-state-badge" id="state-badge">--</span>
+    <button class="btn btn-small btn-secondary" onclick="toggleCamera()">📷 {{ _('klipper_webcam') }}</button>
+    <a href="http://{{ printer.ip_address }}:{{ printer.moonraker_port or 7125 }}" target="_blank" class="btn btn-small btn-secondary">{{ _('open_browser') }}</a>
+    <button class="btn btn-small btn-secondary" onclick="loadMacros()" title="{{ _('klipper_macros') }}">📜 {{ _('klipper_macros') }}</button>
+    <button class="btn btn-small btn-secondary" onclick="openKlipperSettings()" style="margin-left:auto;">⚙️</button>
+</div>
+
+<div class="klipper-grid">
+    <div class="card klipper-panel">
+        <h3 class="panel-title">{{ _('klipper_status') }}</h3>
+        <div class="klipper-state-row">
+            <span class="klipper-label">{{ _('klipper_state') }}:</span>
+            <span id="klippy-state">--</span>
+            <span id="klippy-msg" style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:0.2rem;"></span>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_temps') }}</h3>
+        <div class="temp-row">
+            <span class="klipper-label">{{ _('klipper_extruder') }}:</span>
+            <span class="temp-current" id="ext-temp">--</span>
+            <span class="temp-sep">/</span>
+            <span class="temp-target" id="ext-target">--</span>
+            <span class="temp-unit">&deg;C</span>
+            <div class="temp-set">
+                <input type="number" id="ext-set-input" class="temp-input" value="200" step="5" min="0" max="350">
+                <button class="btn btn-small btn-primary" onclick="setTemp('extruder')">{{ _('klipper_set_temp') }}</button>
+            </div>
+        </div>
+        <div class="temp-row">
+            <span class="klipper-label">{{ _('klipper_bed') }}:</span>
+            <span class="temp-current" id="bed-temp">--</span>
+            <span class="temp-sep">/</span>
+            <span class="temp-target" id="bed-target">--</span>
+            <span class="temp-unit">&deg;C</span>
+            <div class="temp-set">
+                <input type="number" id="bed-set-input" class="temp-input" value="60" step="5" min="0" max="150">
+                <button class="btn btn-small btn-primary" onclick="setTemp('heater_bed')">{{ _('klipper_set_temp') }}</button>
+            </div>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_position') }}</h3>
+        <div class="pos-row">
+            <span class="klipper-label">X:</span><span id="pos-x">--</span>
+            <span class="klipper-label">Y:</span><span id="pos-y">--</span>
+            <span class="klipper-label">Z:</span><span id="pos-z">--</span>
+        </div>
+        <div class="pos-row" style="margin-top:0.3rem;">
+            <span class="klipper-label">{{ _('klipper_print_duration') }}:</span>
+            <span id="print-duration">00:00</span>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_print') }}</h3>
+        <div id="print-info">
+            <div class="print-row"><span class="klipper-label">{{ _('klipper_file') }}:</span><span id="print-file">--</span></div>
+            <div class="print-row"><span class="klipper-label">{{ _('klipper_state') }}:</span><span id="print-state">--</span></div>
+            <div class="print-row"><span class="klipper-label">{{ _('klipper_progress') }}:</span>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill" id="print-progress-bar" style="width:0%"></div></div>
+                <span id="print-progress-text">0%</span>
+            </div>
+            <div class="print-row"><span class="klipper-label">{{ _('klipper_eta') }}:</span><span id="print-eta">--</span></div>
+            <div class="print-row"><span class="klipper-label">{{ _('klipper_filament_used') }}:</span>
+                <span id="print-filament-mm">--</span>
+                <span id="print-filament-g" style="font-weight:600; color:var(--accent);"></span>
+            </div>
+        </div>
+
+        <div id="calc-ready-section" style="display:none; margin-top:0.5rem; padding:0.5rem; background:var(--accent-light); border-radius:8px;">
+            <div style="font-size:0.85rem; font-weight:600;">{{ _('calc_cost') }}</div>
+            <div class="print-row" style="margin-top:0.3rem;">
+                <span class="klipper-label">{{ _('model_weight') }}:</span>
+                <span id="calc-weight-g" style="font-weight:700;">0</span><span> {{ _('grams') }}</span>
+            </div>
+            <div class="print-row">
+                <span class="klipper-label">{{ _('print_time') }}:</span>
+                <span id="calc-hours" style="font-weight:700;">0</span><span> {{ _('hours') }}</span>
+            </div>
+            <button class="btn btn-primary" style="margin-top:0.3rem; width:100%;" onclick="sendToCalculator()">{{ _('go_calc') }} &rarr;</button>
+            <button class="btn btn-secondary" style="margin-top:0.3rem; width:100%;" onclick="saveCalcAndDeduct()">{{ _('save_deduct') }}</button>
+        </div>
+    </div>
+
+    <div class="card klipper-panel">
+        <h3 class="panel-title">{{ _('klipper_controls') }}</h3>
+        <div class="ctrl-row">
+            <button class="btn btn-primary" onclick="sendKlipper('POST', 'printer/print/pause')" id="btn-pause">{{ _('klipper_pause') }}</button>
+            <button class="btn btn-secondary" onclick="sendKlipper('POST', 'printer/print/resume')" id="btn-resume">{{ _('klipper_resume') }}</button>
+            <button class="btn btn-danger" onclick="sendKlipper('POST', 'printer/print/cancel')" id="btn-cancel">{{ _('klipper_cancel') }}</button>
+        </div>
+        <div class="ctrl-row" style="margin-top:0.5rem;">
+            <button class="btn btn-secondary" onclick="sendKlipper('POST', 'printer/gcode/script', {script:'G28'})">{{ _('klipper_home') }}</button>
+            <button class="btn btn-secondary" onclick="sendKlipper('POST', 'printer/restart')">{{ _('klipper_restart') }}</button>
+            <button class="btn btn-secondary" onclick="sendKlipper('POST', 'printer/firmware_restart')">{{ _('klipper_firmware_restart') }}</button>
+        </div>
+        <div class="ctrl-row" style="margin-top:0.5rem;">
+            <button class="btn btn-danger emergency-btn" onclick="sendKlipper('POST', 'printer/emergency_stop')">{{ _('klipper_emergency') }}</button>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_quick_scripts') }}</h3>
+        <div class="ctrl-row" style="margin-top:0.3rem;">
+            <button class="btn btn-small btn-primary" onclick="sendScripts('M104 S210\\nM140 S60')" style="font-size:0.8rem;">🔥 PLA (210/60)</button>
+            <button class="btn btn-small btn-primary" onclick="sendScripts('M104 S230\\nM140 S75')" style="font-size:0.8rem;">🔥 PETG (230/75)</button>
+            <button class="btn btn-small btn-secondary" onclick="sendScripts('M104 S0\\nM140 S0')" style="font-size:0.8rem;">❄️ {{ _('klipper_cool_down') }}</button>
+            <button class="btn btn-small btn-secondary" onclick="sendScripts('M106 S0')" style="font-size:0.8rem;">🌀 {{ _('klipper_fan_off') }}</button>
+            <button class="btn btn-small btn-secondary" onclick="sendScripts('M84')" style="font-size:0.8rem;">🔌 {{ _('klipper_motors_off') }}</button>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_filament_binding') }}</h3>
+        <div class="ctrl-row" style="margin-top:0.3rem; flex-direction:column; gap:0.3rem;">
+            <select id="klipper-filament-select" style="width:100%; padding:0.4rem; border-radius:6px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); font-size:0.82rem;">
+                <option value="">{{ _('klipper_no_filament') }}</option>
+            </select>
+            <div style="display:flex; gap:0.3rem;">
+                <button class="btn btn-small btn-primary" onclick="setActiveFilament()" style="font-size:0.8rem;">{{ _('klipper_bind_filament') }}</button>
+                <button class="btn btn-small btn-secondary" onclick="deductFilamentManually()" style="font-size:0.8rem;">{{ _('klipper_deduct') }}</button>
+            </div>
+            <div id="klipper-filament-info" style="font-size:0.78rem; color:var(--text-muted);"></div>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_macros') }}</h3>
+        <div id="klipper-macro-list" class="ctrl-row" style="margin-top:0.3rem;">
+            <span class="klipper-no-data" id="macro-status">{{ _('klipper_loading') }}...</span>
+        </div>
+
+        <h3 class="panel-title" style="margin-top:1rem;">{{ _('klipper_console') }}</h3>
+        <div class="gcode-output" id="gcode-log"></div>
+        <div class="gcode-input-row">
+            <textarea id="gcode-input" rows="2" placeholder="{{ _('klipper_placeholder_gcode') | replace('\n', '&#10;') }}"></textarea>
+            <button class="btn btn-primary" onclick="sendGCode()">{{ _('klipper_send_gcode') }}</button>
+        </div>
+    </div>
+
+    <div class="klipper-right">
+        {% if printer.camera_ip %}
+        <div class="card klipper-panel">
+            <h3 class="panel-title">
+                {{ _('klipper_webcam') }}
+                <span class="klipper-cam-ip" style="font-weight:400; text-transform:none; font-size:0.75rem;">{{ printer.camera_ip }}</span>
+            </h3>
+            <div class="webcam-wrap">
+                <img id="webcam-feed" src="http://{{ printer.camera_ip }}" alt="Webcam" onerror="this.closest('.klipper-panel').style.display='none'">
+            </div>
+        </div>
+        {% endif %}
+        <div class="card klipper-panel">
+            <h3 class="panel-title">{{ _('klipper_files') }}</h3>
+            <div class="file-list" id="file-list">
+                <span class="klipper-no-data">{{ _('klipper_no_connection') }}</span>
+            </div>
+        </div>
+        <div class="card klipper-panel" id="preview-card" style="display:none;">
+            <h3 class="panel-title">{{ _('preview') }}</h3>
+            <div id="preview-content" style="text-align:center;">
+                <img id="preview-thumb" src="" alt="Thumbnail" style="max-width:100%; border-radius:8px; display:none;">
+                <div id="preview-info" style="font-size:0.82rem; color:var(--text-muted); margin-top:0.3rem;"></div>
+            </div>
+        </div>
+        <div class="card klipper-panel">
+            <h3 class="panel-title">{{ _('klipper_bed_mesh') }}</h3>
+            <div class="ctrl-row" style="margin-bottom:0.5rem;">
+                <button class="btn btn-small btn-primary" onclick="calibrateBedMesh()" style="font-size:0.8rem;">📐 {{ _('klipper_calibrate_mesh') }}</button>
+                <button class="btn btn-small btn-secondary" onclick="loadBedMesh()" style="font-size:0.8rem;">🔄 {{ _('klipper_load_mesh') }}</button>
+            </div>
+            <div id="bed-mesh-vis" style="overflow-x:auto;">
+                <div id="bed-mesh-status" style="font-size:0.78rem; color:var(--text-muted);">{{ _('klipper_mesh_not_loaded') }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="klipper-settings-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:400px;">
+        <div class="modal-header">
+            <h3>⚙️ Moonraker {{ _('settings') }}</h3>
+            <button class="modal-close" onclick="closeKlipperSettings()">✕</button>
+        </div>
+        <form id="klipper-settings-form" class="modal-form">
+            <div class="form-group">
+                <label>{{ _('ip_address') }}</label>
+                <input type="text" id="ks-ip" value="{{ printer.ip_address }}" required>
+            </div>
+            <div class="form-group">
+                <label>Moonraker {{ _('watts').replace('Вт','port').replace('W','Port').replace('Potencia','Puerto') }}</label>
+                <input type="number" id="ks-port" value="{{ printer.moonraker_port or 7125 }}" min="1" max="65535" required>
+            </div>
+            <div class="form-group">
+                <label>API Key <span class="optional">{{ _('optional') }}</span></label>
+                <input type="text" id="ks-api-key" value="{{ printer.moonraker_api_key or '' }}" placeholder="xxxxxxxxxxxxxxxx">
+            </div>
+            <div class="form-group">
+                <label>{{ _('klipper_filament_used') }}: {{ _('shpoolken_diameter') }} (мм)</label>
+                <input type="number" id="ks-diameter" value="{{ printer.filament_diameter or 1.75 }}" step="0.05" min="0.5" max="5.0" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeKlipperSettings()">{{ _('cancel') }}</button>
+                <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="camera-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:800px; width:90%;">
+        <div class="modal-header">
+            <h3>📷 {{ _('klipper_webcam') }}
+                <span id="camera-ip-display" style="font-weight:400; font-size:0.8rem; color:var(--text-muted); margin-left:0.5rem;"></span>
+            </h3>
+            <button class="modal-close" onclick="closeCamera()">✕</button>
+        </div>
+        <div id="camera-feed-wrap" style="text-align:center; min-height:200px; display:flex; align-items:center; justify-content:center; background:#111; border-radius:8px; overflow:hidden;">
+            <img id="camera-img" src="" alt="Camera feed" style="max-width:100%; max-height:70vh; display:none; border-radius:8px;">
+            <div id="camera-no-ip" style="color:var(--text-muted); font-size:0.9rem;">{{ _('klipper_no_camera_ip') }}</div>
+        </div>
+    </div>
+</div>
+
+<script>
+var PRINTER_ID = {{ printer.id }};
+var PROXY = '/printers/' + PRINTER_ID + '/klipper/proxy/';
+var POLL_INTERVAL = 2000;
+var pollTimer = null;
+
+function klipperApi(method, path, body) {
+    var opts = { method: method, headers: {} };
+    if (body) {
+        if (typeof body === 'string') { opts.body = body; }
+        else { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    }
+    return fetch(PROXY + path, opts).then(function(r) { return r.json(); });
+}
+
+function sendKlipper(method, path, body) {
+    klipperApi(method, path, body).then(function(data) {
+        if (data.error) addGCodeLine('Error: ' + (data.error.message || JSON.stringify(data.error)));
+        else addGCodeLine('OK: ' + path);
+    }).catch(function(err) { addGCodeLine('Error: ' + err.message); });
+}
+
+function sendGCode() {
+    var input = document.getElementById('gcode-input');
+    var script = input.value.trim();
+    if (!script) return;
+    addGCodeLine('>>> ' + script);
+    klipperApi('POST', 'printer/gcode/script', {script: script}).then(function(data) {
+        if (data.error) addGCodeLine('Error: ' + (data.error.message || JSON.stringify(data.error)));
+        else addGCodeLine('OK');
+    }).catch(function(err) { addGCodeLine('Error: ' + err.message); });
+    input.value = '';
+}
+
+function addGCodeLine(text) {
+    var log = document.getElementById('gcode-log');
+    var line = document.createElement('div');
+    line.className = 'gcode-line';
+    line.textContent = text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+    if (log.children.length > 200) log.removeChild(log.firstChild);
+}
+
+function setTemp(heater) {
+    var inputId = heater === 'extruder' ? 'ext-set-input' : 'bed-set-input';
+    var temp = parseInt(document.getElementById(inputId).value, 10);
+    if (isNaN(temp)) return;
+    var script = 'SET_HEATER_TEMPERATURE HEATER=' + heater + ' TARGET=' + temp;
+    addGCodeLine('>>> ' + script);
+    klipperApi('POST', 'printer/gcode/script', {script: script}).then(function(data) {
+        if (data.error) addGCodeLine('Error: ' + (data.error.message || JSON.stringify(data.error)));
+        else addGCodeLine('OK');
+    });
+}
+
+function fmtTime(secs) {
+    if (secs == null || isNaN(secs) || secs < 0) return '--';
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = Math.floor(secs % 60);
+    if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    return m + ':' + String(s).padStart(2,'0');
+}
+
+var lastFilename = '';
+
+function updateStatus(data) {
+    var status = data.status || {};
+    var badge = document.getElementById('state-badge');
+
+    var wh = status.webhooks || {};
+    var klippyState = wh.state || 'unknown';
+    document.getElementById('klippy-state').textContent = klippyState;
+    document.getElementById('klippy-msg').textContent = wh.state_message || '';
+    badge.textContent = klippyState;
+    badge.className = 'klipper-state-badge ' + klippyState;
+
+    var ext = status.extruder || {};
+    document.getElementById('ext-temp').textContent = ext.temperature != null ? ext.temperature.toFixed(1) : '--';
+    document.getElementById('ext-target').textContent = ext.target != null ? ext.target.toFixed(1) : '--';
+
+    var bed = status.heater_bed || {};
+    document.getElementById('bed-temp').textContent = bed.temperature != null ? bed.temperature.toFixed(1) : '--';
+    document.getElementById('bed-target').textContent = bed.target != null ? bed.target.toFixed(1) : '--';
+
+    var th = status.toolhead || {};
+    var pos = th.position || [];
+    document.getElementById('pos-x').textContent = pos[0] != null ? pos[0].toFixed(1) : '--';
+    document.getElementById('pos-y').textContent = pos[1] != null ? pos[1].toFixed(1) : '--';
+    document.getElementById('pos-z').textContent = pos[2] != null ? pos[2].toFixed(1) : '--';
+
+    var ps = status.print_stats || {};
+    var vsd = status.virtual_sdcard || {};
+    var fn = ps.filename || '';
+    document.getElementById('print-file').textContent = fn || '--';
+    document.getElementById('print-state').textContent = ps.state || '--';
+    document.getElementById('print-duration').textContent = ps.print_duration != null ? fmtTime(ps.print_duration) : '--';
+
+    var progress = vsd.progress != null ? vsd.progress : 0;
+    var pct = (progress * 100).toFixed(1);
+    document.getElementById('print-progress-bar').style.width = pct + '%';
+    document.getElementById('print-progress-text').textContent = pct + '%';
+
+    if (ps.print_duration != null && ps.print_duration > 0 && progress > 0) {
+        var totalEst = ps.print_duration / progress;
+        var eta = totalEst - ps.print_duration;
+        document.getElementById('print-eta').textContent = fmtTime(eta);
+    } else {
+        document.getElementById('print-eta').textContent = '--';
+    }
+
+    var filament_mm = ps.filament_used || 0;
+    document.getElementById('print-filament-mm').textContent = (filament_mm / 1000).toFixed(2) + ' m';
+
+    // Fetch filament calc in grams from backend
+    var filament_g_el = document.getElementById('print-filament-g');
+    if (filament_mm > 0) {
+        fetch('/printers/' + PRINTER_ID + '/klipper/filament-calc')
+        .then(function(r) { return r.json(); })
+        .then(function(fc) {
+            if (fc.ok) {
+                filament_g_el.textContent = ' (' + fc.filament_g + ' g)';
+            }
+        });
+    } else {
+        filament_g_el.textContent = '';
+    }
+
+    // Show/hide calc-ready section when print is complete or standby after print
+    var state = ps.state || 'standby';
+    var pauseBtn = document.getElementById('btn-pause');
+    var resumeBtn = document.getElementById('btn-resume');
+    var cancelBtn = document.getElementById('btn-cancel');
+    pauseBtn.style.display = (state === 'printing') ? 'inline-block' : 'none';
+    resumeBtn.style.display = (state === 'paused') ? 'inline-block' : 'none';
+    cancelBtn.style.display = (state === 'printing' || state === 'paused') ? 'inline-block' : 'none';
+
+    var calcSection = document.getElementById('calc-ready-section');
+    if ((state === 'complete' || state === 'standby') && fn && fn !== lastFilename) {
+        lastFilename = fn;
+        fetch('/printers/' + PRINTER_ID + '/klipper/filament-calc')
+        .then(function(r) { return r.json(); })
+        .then(function(fc) {
+            if (fc.ok && (fc.state === 'complete' || fc.state === 'standby') && fc.filament_g > 0) {
+                document.getElementById('calc-weight-g').textContent = fc.filament_g;
+                document.getElementById('calc-hours').textContent = (fc.print_duration / 3600).toFixed(2);
+                calcSection.style.display = 'block';
+            } else {
+                calcSection.style.display = 'none';
+            }
+        });
+    } else if (state !== 'complete' && state !== 'standby') {
+        calcSection.style.display = 'none';
+    }
+
+    // Load preview when file changes
+    if (fn && fn !== lastFilename) {
+        lastFilename = fn;
+        loadPreview(fn);
+    }
+}
+
+function pollStatus() {
+    var q = 'printer/objects/query?webhooks&extruder=temperature,target&heater_bed=temperature,target&print_stats&toolhead=position&virtual_sdcard=progress,is_active';
+    fetch(PROXY + q)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.result) updateStatus(data.result);
+        else if (data.error) {
+            document.getElementById('klippy-state').textContent = 'error';
+            document.getElementById('klippy-msg').textContent = data.error.message || 'Connection failed';
+        }
+    })
+    .catch(function(err) {
+        document.getElementById('klippy-state').textContent = 'disconnected';
+        document.getElementById('klippy-msg').textContent = err.message;
+    });
+}
+
+function loadPreview(filename) {
+    var card = document.getElementById('preview-card');
+    fetch(PROXY + 'server/files/metadata?filename=' + encodeURIComponent(filename))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.result) {
+            var meta = data.result;
+            card.style.display = 'block';
+            var info = document.getElementById('preview-info');
+            var size = meta.size ? (meta.size / 1024 / 1024).toFixed(2) + ' MB' : '';
+            var est = meta.estimated_time ? fmtTime(meta.estimated_time) : '';
+            info.textContent = [size, est].filter(Boolean).join(' | ');
+
+            // Show first thumbnail if available
+            var thumbs = meta.thumbnails || [];
+            var img = document.getElementById('preview-thumb');
+            if (thumbs.length > 0 && thumbs[0].data) {
+                img.src = 'data:image/png;base64,' + thumbs[0].data;
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+        }
+    })
+    .catch(function() { card.style.display = 'none'; });
+}
+
+function loadFiles() {
+    fetch(PROXY + 'server/files/list')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var list = document.getElementById('file-list');
+        if (!data.result || !data.result.length) {
+            list.innerHTML = '<span class="klipper-no-data">No files</span>';
+            return;
+        }
+        list.innerHTML = data.result.map(function(f) {
+            var name = f.filename || f.path || '?';
+            var size = f.size ? (f.size / 1024 / 1024).toFixed(2) + ' MB' : '';
+            return '<div class="file-item" onclick="printFile(\'' + name.replace(/'/g,"\\'") + '\')">' +
+                '<span class="file-name">' + name + '</span>' +
+                '<span class="file-size">' + size + '</span></div>';
+        }).join('');
+    })
+    .catch(function() {
+        document.getElementById('file-list').innerHTML = '<span class="klipper-no-data">{{ _("klipper_no_connection") }}</span>';
+    });
+}
+
+function printFile(name) {
+    if (!confirm('Print ' + name + '?')) return;
+    klipperApi('POST', 'printer/print/start', {filename: name}).then(function(data) {
+        if (data.error) addGCodeLine('Error: ' + (data.error.message || JSON.stringify(data.error)));
+        else addGCodeLine('Started: ' + name);
+    });
+}
+
+function sendToCalculator() {
+    var weight = document.getElementById('calc-weight-g').textContent;
+    var hours = document.getElementById('calc-hours').textContent;
+    var file = document.getElementById('print-file').textContent;
+    window.location.href = '{{ url_for("calculator") }}?weight=' + weight + '&hours=' + hours + '&name=' + encodeURIComponent(file) + '&printer_id={{ printer.id }}';
+}
+
+// Quick scripts
+function sendScripts(script) {
+    addGCodeLine('>>> ' + script.replace(/\n/g, '; '));
+    klipperApi('POST', 'printer/gcode/script', {script: script}).then(function(data) {
+        if (data.error) addGCodeLine('Error: ' + (data.error.message || JSON.stringify(data.error)));
+        else addGCodeLine('OK');
+    }).catch(function(err) { addGCodeLine('Error: ' + err.message); });
+}
+
+// Bed mesh
+function calibrateBedMesh() {
+    sendScripts('BED_MESH_CALIBRATE');
+}
+
+function loadBedMesh() {
+    var statusEl = document.getElementById('bed-mesh-status');
+    var visEl = document.getElementById('bed-mesh-vis');
+    statusEl.textContent = '{{ _("klipper_loading_mesh") }}...';
+    fetch('/printers/' + PRINTER_ID + '/klipper/bed-mesh')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.ok || !data.bed_mesh) {
+            statusEl.textContent = '{{ _("klipper_mesh_not_found") }}';
+            return;
+        }
+        var bm = data.bed_mesh;
+        var matrix = bm.probed_matrix || bm.mesh_matrix || [];
+        if (!matrix.length || !matrix[0]) {
+            statusEl.textContent = '{{ _("klipper_mesh_not_found") }}';
+            return;
+        }
+
+        var profile = bm.profile_name || 'default';
+        var meshMin = bm.mesh_min || [0,0];
+        var meshMax = bm.mesh_max || [0,0];
+
+        // Find min/max values for coloring
+        var allVals = [];
+        matrix.forEach(function(row) { row.forEach(function(v) { allVals.push(v); }); });
+        var minVal = Math.min.apply(null, allVals);
+        var maxVal = Math.max.apply(null, allVals);
+        var range = maxVal - minVal || 1;
+
+        var html = '<div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:0.3rem;">' +
+            'Profile: ' + profile + ' | X: ' + meshMin[0].toFixed(1) + '-' + meshMax[0].toFixed(1) + ' | Y: ' + meshMin[1].toFixed(1) + '-' + meshMax[1].toFixed(1) +
+            '</div>';
+        html += '<table class="mesh-table" style="border-collapse:collapse; margin:0 auto;">';
+        for (var y = 0; y < matrix.length; y++) {
+            html += '<tr>';
+            for (var x = 0; x < matrix[y].length; x++) {
+                var v = matrix[y][x];
+                var pct = (v - minVal) / range;
+                var r, g, b;
+                if (pct < 0.5) {
+                    r = Math.round(66 + (255 - 66) * pct * 2);
+                    g = Math.round(184 + (255 - 184) * pct * 2);
+                    b = Math.round(80 + (255 - 80) * pct * 2);
+                } else {
+                    r = 255;
+                    g = Math.round(255 - (255 - 184) * (pct - 0.5) * 2);
+                    b = Math.round(255 - (255 - 80) * (pct - 0.5) * 2);
+                }
+                var color = 'rgb(' + r + ',' + g + ',' + b + ')';
+                html += '<td style="width:36px; height:36px; text-align:center; font-size:0.6rem; font-weight:600; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.5); background:' + color + '; border:1px solid rgba(255,255,255,0.3);">' + v.toFixed(3) + '</td>';
+            }
+            html += '</tr>';
+        }
+        html += '</table>';
+        html += '<div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:0.3rem;">' +
+            'Min: ' + minVal.toFixed(3) + ' | Max: ' + maxVal.toFixed(3) + ' | Range: ' + range.toFixed(3) +
+            '</div>';
+
+        // Replace the status div content
+        var parent = visEl;
+        parent.innerHTML = html;
+    })
+    .catch(function(err) {
+        statusEl.textContent = 'Error: ' + err.message;
+    });
+}
+
+// Filament binding
+function loadFilamentList() {
+    fetch('/printers/' + PRINTER_ID + '/klipper/filaments')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var sel = document.getElementById('klipper-filament-select');
+        var activeFilamentId = {{ printer.active_filament_id or 'null' }};
+        sel.innerHTML = '<option value="">{{ _("klipper_no_filament") }}</option>';
+        if (data.ok && data.filaments) {
+            data.filaments.forEach(function(f) {
+                var opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = (f.manufacturer || '') + ' ' + f.name + ' (' + f.filament_type + ') - ' + f.remaining_g + '/' + f.spool_weight_g + 'g';
+                if (f.id === activeFilamentId) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+        updateFilamentInfo();
+    });
+}
+
+function setActiveFilament() {
+    var fid = document.getElementById('klipper-filament-select').value;
+    if (!fid) fid = null;
+    fetch('/printers/' + PRINTER_ID + '/klipper/set-filament', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({filament_id: fid})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+            showToast('{{ _("saved") }}', 'success');
+            updateFilamentInfo();
+        }
+    });
+}
+
+function updateFilamentInfo() {
+    var sel = document.getElementById('klipper-filament-select');
+    var info = document.getElementById('klipper-filament-info');
+    var opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+        info.textContent = opt.textContent;
+    } else {
+        info.textContent = '{{ _("klipper_no_filament_bound") }}';
+    }
+}
+
+function deductFilamentManually() {
+    if (!confirm('{{ _("klipper_deduct_confirm") }}')) return;
+    deductActiveFilament();
+}
+
+function deductActiveFilament() {
+    var weight = document.getElementById('calc-weight-g').textContent;
+    if (!weight || parseFloat(weight) <= 0) return;
+    fetch('/printers/' + PRINTER_ID + '/klipper/deduct-filament', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({weight_g: parseFloat(weight)})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+            showToast('{{ _("klipper_deducted") }} ' + data.deducted + 'g', 'success');
+            loadFilamentList();
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    });
+}
+
+function saveCalcAndDeduct() {
+    var weight = parseFloat(document.getElementById('calc-weight-g').textContent) || 0;
+    var hours = parseFloat(document.getElementById('calc-hours').textContent) || 0;
+    var file = document.getElementById('print-file').textContent;
+    if (weight > 0) {
+        fetch('/printers/' + PRINTER_ID + '/klipper/deduct-filament', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({weight_g: weight})
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) {
+                showToast('{{ _("klipper_deducted") }} ' + data.deducted + 'g', 'success');
+                loadFilamentList();
+            } else {
+                showToast(data.error || '{{ _("klipper_deduct") }} error', 'error');
+            }
+        });
+    }
+    fetch('/printers/' + PRINTER_ID + '/klipper/save-print', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({weight_g: weight, print_hours: hours, model_name: file || 'Klipper Print'})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) showToast('{{ _("calc_saved") }}', 'success');
+    });
+}
+
+// Printer macros from Moonraker
+function loadMacros() {
+    var list = document.getElementById('klipper-macro-list');
+    var status = document.getElementById('macro-status');
+    status.textContent = '{{ _("klipper_loading") }}...';
+    fetch('/printers/' + PRINTER_ID + '/klipper/macros')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.ok || !data.macros || !data.macros.length) {
+            status.textContent = '{{ _("klipper_no_macros") }}';
+            return;
+        }
+        status.textContent = '';
+        list.innerHTML = data.macros.map(function(m) {
+            return '<button class="btn btn-small btn-secondary" onclick="sendScripts(\'' + m + '\')" style="font-size:0.78rem; text-transform:none;">▸ ' + m + '</button>';
+        }).join('');
+    })
+    .catch(function(err) {
+        status.textContent = '{{ _("klipper_no_connection") }}';
+    });
+}
+
+// Camera toggle
+function toggleCamera() {
+    var camIp = '{{ printer.camera_ip or "" }}';
+    document.getElementById('camera-ip-display').textContent = camIp || '';
+    document.getElementById('camera-modal').style.display = 'flex';
+
+    if (camIp) {
+        document.getElementById('camera-img').src = 'http://' + camIp;
+        document.getElementById('camera-img').style.display = 'block';
+        document.getElementById('camera-no-ip').style.display = 'none';
+    } else {
+        document.getElementById('camera-img').style.display = 'none';
+        document.getElementById('camera-no-ip').style.display = 'block';
+    }
+}
+
+function closeCamera() {
+    document.getElementById('camera-modal').style.display = 'none';
+    document.getElementById('camera-img').src = '';
+}
+
+function openKlipperSettings() {
+    document.getElementById('klipper-settings-modal').style.display = 'flex';
+}
+
+function closeKlipperSettings() {
+    document.getElementById('klipper-settings-modal').style.display = 'none';
+}
+
+document.getElementById('klipper-settings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fd = new FormData();
+    fd.append('name', '{{ printer.name|replace("'","\\'") }}');
+    fd.append('power_watts', '{{ printer.power_watts }}');
+    fd.append('purchase_price', '{{ printer.purchase_price }}');
+    fd.append('depreciation_per_hour', '{{ printer.depreciation_per_hour }}');
+    fd.append('ip_address', document.getElementById('ks-ip').value);
+    fd.append('camera_ip', '{{ printer.camera_ip or "" }}');
+    fd.append('commissioning_date', '{{ printer.commissioning_date or "" }}');
+    fd.append('tags', '{{ printer.tags or "" }}');
+    fd.append('moonraker_port', document.getElementById('ks-port').value);
+    fd.append('moonraker_api_key', document.getElementById('ks-api-key').value);
+    fd.append('filament_diameter', document.getElementById('ks-diameter').value);
+    fetch('/printers/{{ printer.id }}/edit', { method: 'POST', body: fd })
+    .then(function() {
+        closeKlipperSettings();
+        showToast('{{ _("saved") }}', 'success');
+    });
+});
+
+// Init
+pollStatus();
+loadFiles();
+loadFilamentList();
+loadMacros();
+pollTimer = setInterval(pollStatus, POLL_INTERVAL);
+
+document.getElementById('gcode-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendGCode(); }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeCamera(); }
+});
+
+window.addEventListener('beforeunload', function() { if (pollTimer) clearInterval(pollTimer); });
+</script>
+
+<style>
+.klipper-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.klipper-state-badge {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.klipper-state-badge.ready { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e40; }
+.klipper-state-badge.error { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
+.klipper-state-badge.shutdown { background: #f9731620; color: #f97316; border: 1px solid #f9731640; }
+.klipper-state-badge.startup { background: #3b82f620; color: #3b82f6; border: 1px solid #3b82f640; }
+.klipper-state-badge.disconnected { background: #6b728020; color: #6b7280; border: 1px solid #6b728040; }
+.klipper-cam-ip { font-size:0.7rem; color:var(--text-muted); font-family:'SF Mono','Courier New',monospace; }
+
+.klipper-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+@media (max-width: 1200px) { .klipper-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 768px) { .klipper-grid { grid-template-columns: 1fr; } }
+
+.klipper-panel { padding: 1rem; }
+.panel-title { font-size: 0.9rem; font-weight: 600; margin: 0 0 0.5rem 0; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.klipper-label { font-size: 0.8rem; color: var(--text-muted); margin-right: 0.3rem; }
+.temp-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.temp-current { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.temp-target { font-size: 1rem; color: var(--text-muted); }
+.temp-sep { color: var(--text-muted); }
+.temp-unit { font-size: 0.8rem; color: var(--text-muted); }
+.temp-set { display: flex; gap: 0.3rem; align-items: center; margin-left: auto; }
+.temp-input { width: 70px; padding: 0.3rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.85rem; }
+.pos-row { display: flex; gap: 0.75rem; align-items: center; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.print-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.progress-bar-wrap { flex: 1; min-width: 80px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.5s ease; }
+.ctrl-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.emergency-btn { background: #ef4444 !important; color: white !important; border-color: #ef4444 !important; width: 100%; font-weight: 700; letter-spacing: 0.05em; }
+.gcode-output { height: 200px; overflow-y: auto; background: #1a1a2e; color: #e0e0e0; font-family: 'SF Mono', 'Courier New', monospace; font-size: 0.78rem; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; white-space: pre-wrap; word-break: break-all; }
+.gcode-line { padding: 0.1rem 0; line-height: 1.4; }
+.gcode-input-row { display: flex; gap: 0.4rem; }
+.gcode-input-row textarea { flex: 1; padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-family: 'SF Mono', 'Courier New', monospace; font-size: 0.82rem; resize: vertical; min-height: 50px; }
+.klipper-right { display: flex; flex-direction: column; gap: 1rem; }
+.webcam-wrap { position: relative; width: 100%; border-radius: 8px; overflow: hidden; }
+.webcam-wrap img { width: 100%; height: auto; display: block; border-radius: 8px; }
+.file-list { max-height: 300px; overflow-y: auto; }
+.file-item { display: flex; justify-content: space-between; padding: 0.4rem 0.5rem; border-radius: 6px; cursor: pointer; transition: background 0.15s; font-size: 0.82rem; }
+.file-item:hover { background: var(--glass-bg-hover); }
+.file-name { font-family: 'SF Mono', 'Courier New', monospace; color: var(--text); }
+.file-size { color: var(--text-muted); font-size: 0.75rem; }
+.klipper-no-data { color: var(--text-muted); font-size: 0.85rem; }
+.mesh-table { border-collapse: collapse; }
+.mesh-table td { width: 36px; height: 36px; text-align: center; font-size: 0.6rem; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.3); }
+</style>
+{% endblock %}

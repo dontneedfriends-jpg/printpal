@@ -25,5 +25,5 @@ DEFAULT_ELECTRICITY_RATE = 5.0
 DEFAULT_BASE_RATE = 50.0
 DEFAULT_MARKUP_PERCENT = 20.0
 
-HOST = os.environ.get("FLASK_HOST", "127.0.0.1")
+HOST = os.environ.get("FLASK_HOST", "0.0.0.0")
 PORT = int(os.environ.get("FLASK_PORT", "5000"))

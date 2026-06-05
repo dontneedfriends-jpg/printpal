@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#e8ecf1</color>
+    <color name="on_primary">#ffffff</color>
+    <color name="on_surface">#1a1a2e</color>
+    <color name="primary">#4361ee</color>
+    <color name="primary_dark">#3a56d4</color>
+    <color name="surface">#ffffff</color>
+    <color name="text_secondary">#8888a0</color>
+    <string name="app_name">PrintPAL</string>
+    <string name="connecting">Connecting to server…</string>
+    <string name="connection_error">Cannot connect to server</string>
+    <string name="enter_url">Enter your PrintPAL server address</string>
+    <string name="retry">Retry</string>
+    <string name="save">Save</string>
+    <string name="server_url">Server URL</string>
+    <string name="server_url_hint">http://192.168.1.100:5000</string>
+    <string name="settings">Settings</string>
+    <style name="Theme.PrintPAL" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/background</item>
+    </style>
+</resources>

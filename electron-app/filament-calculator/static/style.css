@@ -1707,3 +1707,164 @@ input[type="file"]::file-selector-button:hover {
     from { transform: translateX(0); opacity: 1; }
     to { transform: translateX(100%); opacity: 0; }
 }
+
+/* PWA / Mobile adaptations */
+@media (display-mode: standalone) {
+    .titlebar { padding-top: env(safe-area-inset-top, 0); }
+    .scroll-area { padding-bottom: env(safe-area-inset-bottom, 0); }
+}
+
+@media (max-width: 600px) {
+    .container { padding: 0.5rem; }
+    .navbar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .nav-links { gap: 0.25rem; flex-wrap: nowrap; }
+    .nav-links a { font-size: 0.78rem; padding: 0.4rem 0.5rem; white-space: nowrap; }
+    h1 { font-size: 1.2rem; }
+    .card { padding: 0.75rem; }
+    .table { font-size: 0.78rem; }
+    .table th, .table td { padding: 0.4rem 0.4rem; }
+    .btn { font-size: 0.82rem; padding: 0.4rem 0.75rem; }
+    .klipper-grid { grid-template-columns: 1fr !important; }
+    .temp-set { margin-left: 0; width: 100%; }
+    .temp-input { flex: 1; }
+    .gcode-input-row { flex-direction: column; }
+    .modal-box { margin: 0.5rem; width: auto; max-width: none; }
+    .color-picker-row { flex-wrap: wrap; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .shpoolken-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+
+@media (max-width: 400px) {
+    .nav-links a { font-size: 0.7rem; padding: 0.3rem 0.4rem; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .shpoolken-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Hamburger menu */
+.hamburger {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    margin-left: auto;
+    color: var(--text-navbar);
+    border-radius: 6px;
+    z-index: 1002;
+}
+.hamburger:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+.nav-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 998;
+}
+.nav-close {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .hamburger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .nav-links {
+        position: fixed;
+        top: 0; right: -280px;
+        width: 260px;
+        height: 100%;
+        flex-direction: column;
+        background: var(--bg-navbar);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        padding: 60px 1.2rem 1.2rem;
+        z-index: 999;
+        transition: right 0.25s ease;
+        border-left: 1px solid rgba(255,255,255,0.1);
+        overflow-y: auto;
+        gap: 0.15rem;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.2);
+    }
+    .nav-links a {
+        font-size: 0.95rem !important;
+        padding: 0.7rem 0.8rem !important;
+        white-space: normal !important;
+        border-radius: 8px;
+        display: block;
+    }
+    .nav-links a:hover {
+        background: rgba(255,255,255,0.08);
+    }
+    .nav-links a.active {
+        background: rgba(67,97,238,0.25);
+        color: var(--text-navbar-active);
+    }
+    .nav-close {
+        display: flex;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-navbar);
+        padding: 6px;
+        border-radius: 6px;
+        z-index: 1000;
+    }
+    .nav-close:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    body.nav-open .nav-links {
+        right: 0;
+    }
+    body.nav-open .nav-overlay {
+        display: block;
+    }
+    .navbar {
+        position: relative;
+    }
+    .nav-brand {
+        margin-right: 0;
+    }
+    .theme-toggle {
+        margin-top: 0.5rem;
+        justify-content: center;
+        width: 100%;
+        padding: 0.7rem;
+    }
+}
+
+/* PWA standalone mode */
+body.pwa-mode .btn {
+    min-height: 44px;
+    font-size: 0.95rem;
+}
+body.pwa-mode input,
+body.pwa-mode select,
+body.pwa-mode textarea {
+    font-size: 16px;
+}
+body.pwa-mode .nav-links a {
+    padding: 0.7rem 0.8rem;
+    font-size: 1rem;
+}
+body.pwa-mode .titlebar {
+    padding-top: env(safe-area-inset-top, 8px);
+}
+body.pwa-mode .scroll-area {
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+body.pwa-mode .modal-box {
+    margin: 1rem;
+    max-height: 85vh;
+}
+body.pwa-mode .stat-card {
+    padding: 1rem;
+}

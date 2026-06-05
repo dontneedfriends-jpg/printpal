@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Trophy (Lucide style) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20 C54,20 46,30 38,34 C30,38 22,38 22,38 C22,38 24,48 32,52 C35.5,53.5 40,54 44,53.5 C46,57 50,60 54,62 C58,60 62,57 64,53.5 C68,54 72.5,53.5 76,52 C84,48 86,38 86,38 C86,38 78,38 70,34 C62,30 54,20 54,20Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,66 L46,78 L54,76 L62,78 L66,66" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M36,32 L38,44" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M72,32 L70,44" />
+</vector>
