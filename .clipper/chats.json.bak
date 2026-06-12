@@ -1,0 +1,13 @@
+{
+  "chat_1": {
+    "id": "chat_1",
+    "name": "chat_1",
+    "projectId": "/home/annenskei/Документы/GitHub/printpal/",
+    "workdir": "/home/annenskei/Документы/GitHub/printpal/",
+    "messages": [],
+    "uiHistory": [],
+    "compressedContext": "",
+    "lastCompressIdx": 0,
+    "originalTask": ""
+  }
+}
