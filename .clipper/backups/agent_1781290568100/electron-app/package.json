@@ -8,7 +8,6 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
     "android:sync": "npx cap sync android",
     "android:open": "npx cap open android",
     "android:build": "cd ../printpal-android && gradlew assembleDebug"
@@ -89,10 +88,6 @@
     },
     "portable": {
       "artifactName": "PrintPAL.exe"
-    },
-    "linux": {
-      "target": ["AppImage", "deb"],
-      "category": "Utility"
     }
   }
 }

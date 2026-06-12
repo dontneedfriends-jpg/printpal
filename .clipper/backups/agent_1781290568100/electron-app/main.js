@@ -98,10 +98,9 @@ ipcMain.on("win-maximize", () => {
 ipcMain.on("win-close", () => mainWindow && mainWindow.close());
 
 function findEmbeddedPython() {
-  const isWin = process.platform === "win32";
   const candidates = [
-    path.join(__dirname, "python", isWin ? "python.exe" : "python"),
-    path.join(__dirname, "python", isWin ? "python3.exe" : "python3"),
+    path.join(__dirname, "python", "python.exe"),
+    path.join(__dirname, "python", "python3.exe"),
   ];
   
   for (const cmd of candidates) {
@@ -158,9 +157,7 @@ async function setupAndStart() {
   } else {
     log("Packaged mode branch");
     basePath = path.join(process.resourcesPath, "app.asar.unpacked", "filament-calculator");
-    const isWin = process.platform === "win32";
-    const pythonExe = isWin ? "python.exe" : "python";
-    pythonCmd = path.join(process.resourcesPath, "python", pythonExe);
+    pythonCmd = path.join(process.resourcesPath, "python", "python.exe");
     scriptPath = path.join(basePath, "app.py");
     log("Using unpacked path:", basePath);
     log("Resources path:", process.resourcesPath);
