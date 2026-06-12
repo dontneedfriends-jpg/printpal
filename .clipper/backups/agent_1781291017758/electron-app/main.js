@@ -109,8 +109,7 @@ function findEmbeddedPython() {
       return cmd;
     }
   }
-  // Fallback to system python3 on Linux, python on Windows
-  return isWin ? "python" : "python3";
+  return null;
 }
 
 function killFlask() {
@@ -162,14 +161,6 @@ async function setupAndStart() {
     const isWin = process.platform === "win32";
     const pythonExe = isWin ? "python.exe" : "python";
     pythonCmd = path.join(process.resourcesPath, "python", pythonExe);
-    if (!fs.existsSync(pythonCmd) && !isWin) {
-      const python3Cmd = path.join(process.resourcesPath, "python", "python3");
-      if (fs.existsSync(python3Cmd)) {
-        pythonCmd = python3Cmd;
-      } else {
-        pythonCmd = "python3";
-      }
-    }
     scriptPath = path.join(basePath, "app.py");
     log("Using unpacked path:", basePath);
     log("Resources path:", process.resourcesPath);
@@ -192,15 +183,17 @@ async function setupAndStart() {
   }
   
   const pythonDir = path.dirname(pythonCmd);
+  const pythonPath = path.join(pythonDir, "Lib", "site-packages");
   const newPath = pythonDir + path.delimiter + (process.env.PATH || "");
   
   log("Python dir:", pythonDir);
+  log("Python path:", pythonPath);
   
   const newEnv = { 
     ...process.env, 
     PYTHONUNBUFFERED: "1", 
     PATH: newPath,
-    PYTHONPATH: basePath,
+    PYTHONPATH: pythonDir + path.delimiter + pythonPath + path.delimiter + basePath,
     FLASK_HOST: CONFIG.flask.host,
     FLASK_PORT: String(CONFIG.flask.port),
   };
@@ -230,6 +223,7 @@ async function setupAndStart() {
       env: newEnv,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      shell: true,
     });
 
     flaskProcess.stdout.on("data", (d) => { log("[FLASK]", d.toString().trim()); });

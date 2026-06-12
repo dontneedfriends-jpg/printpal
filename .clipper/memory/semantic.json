@@ -24250,6 +24250,91 @@
         -0.022990960627794266,
         -0.020975027233362198
       ]
+    },
+    {
+      "content": "Code agent: Fixed Python detection on Linux (fallback to system python3), corrected PYTHONPATH (removed wrong site-packages path), and removed unnecessary `shell: true` from Flask spawn.\nFiles: electron-app/main.js, electron-app/main.js, electron-app/main.js, electron-app/main.js\nBackup: /home/annenskei/Документы/GitHub/printpal/.clipper/backups/agent_1781291017758",
+      "type": "finding",
+      "tags": [
+        "code-agent",
+        "auto"
+      ],
+      "timestamp": 1781291017762,
+      "metadata": {},
+      "id": "mem_1781291017762_47",
+      "frequency": 1,
+      "lastAccessed": 1781291017762,
+      "projectCount": 1,
+      "wing": "default",
+      "room": "default",
+      "drawer": "memory"
+    },
+    {
+      "content": "Code agent: electron-app/main.js content:\n\nconst { app, BrowserWindow, ipcMain } = require(\"electron\");\nconst path = require(\"path\");\nconst { spawn, execSync } = require(\"child_process\");\nconst http = require(\"http\");\nconst fs = require(\"fs\");\n\nconst CONFIG = {\n  window: {\n    width: 1280,\n    height: 800,\n    minWidth: 900,\n    minHeight: 600,\n  },\n  flask: {\n    host: process.env.FLASK_HOST || \"0.0.0.0\",\n    port: parseInt(process.env.FLASK_PORT, 10) || 5000,\n    maxRetries: 30,\n    retryInterval: 500,\n  },\n  timeouts: {\n    kill: 5000,\n    sigkillDelay: 2000,\n    appExit: 500,\n    startupDelay: 2000,\n  },\n};\n\nlet logFile;\n\nfunction log(...args) {\n  const line = new Date().toISOString() + \" \" + args.join(\" \") + \"\\n\";\n  console.log(...args);\n  if (logFile) {\n    try { fs.appendFileSync(logFile, line); } catch(e) {}\n  }\n}\n\nfunction getAppBasePath() {\n  if (app.isPackaged) {\n    return path.dirname(app.getAppPath());\n  }\n  return __dirname;\n}\n\nlet mainWindow;\nlet flaskProcess;\n\nfunction waitForServer(url, retries, interval, cb, failCb) {\n  log(\"waitForServer:\", url);\n  http\n    .get(url, (res) => {\n      log(\"Server response:\", res.statusCode);\n      if (res.statusCode === 200) cb();\n      else if (retries > 0) setTimeout(() => waitForServer(url, retries - 1, interval, cb, failCb), interval);\n      else failCb(`Server returned ${res.statusCode}`);\n    })\n    .on(\"error\", (e) => {\n      log(\"Server error:\", e.code);\n      if (retries > 0) setTimeout(() => waitForServer(url, retries - 1, interval, cb, failCb), interval);\n      else failCb(\"Connection refused\");\n    });\n}\n\nlog(\"Creating window function...\");\n\nfunction createWindow() {\n  mainWindow = new BrowserWindow({\n    width: CONFIG.window.width,\n    height: CONFIG.window.height,\n    minWidth: CONFIG.window.minWidth,\n    minHeight: CONFIG.window.minHeight,\n    title: \"PrintPAL\",\n    frame: false,\n    show: false,\n    backgroundColor: \"#1a1a2e\",\n    webPreferences: {\n      preload: path.join(__dirname, \"preload.js\"),\n      nodeIntegration: false,\n      contextIsolation: true,\n      nodeEnv: \"production\",\n    },\n  });\n\n  mainWindow.setMenuBarVisibility(false);\n  mainWindow.on(\"closed\", () => { mainWindow = null; });\n  return mainWindow;\n}\n\nfunction showLoadingScreen() {\n  mainWindow.loadFile(path.join(__dirname, \"loading.html\"));\n  mainWindow.show();\n}\n\nipcMain.on(\"win-minimize\", () => mainWindow && mainWindow.minimize());\nipcMain.on(\"win-maximize\", () => {\n  if (mainWindow) mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();\n});\nipcMain.on(\"win-close\", () => mainWindow && mainWindow.close());\n\nfunction findEmbeddedPython() {\n  const isWin = process.platform === \"win32\";\n  const candidates = [\n    path.join(__dirname, \"python\", isWin ? \"python.exe\" : \"python\"),\n    path.join(__dirname, \"python\", isWin ? \"python3.exe\" : \"python3\"),\n  ];\n  \n  for (const cmd of candidates) {\n    if (fs.existsSync(cmd)) {\n      return cmd;\n    }\n  }\n  // Fallback to system python3 on Linux, python on Windows\n  return isWin ? \"python\" : \"python3\";\n}\n\nfunction killFlask() {\n  try {\n    if (!flaskProcess) return;\n    log(\"Killing Flask process...\");\n    if (process.platform === \"win32\") {\n      try {\n        execSync(`taskkill /F /T /PID ${flaskProcess.pid}`, { stdio: \"pipe\", timeout: CONFIG.timeouts.kill });\n      } catch (e) { \n        log(\"kill error:\", e.message); \n      }\n      flaskProcess = null;\n      return;\n    } else {\n      if (!flaskProcess.killed) {\n        flaskProcess.kill(\"SIGTERM\");\n        setTimeout(() => {\n          if (flaskProcess && !flaskProcess.killed) flaskProcess.kill(\"SIGKILL\");\n        }, CONFIG.timeouts.sigkillDelay);\n      }\n    }\n    flaskProcess = null;\n  } catch(e) {\n    log(\"killFlask error:\", e.message);\n  }\n}\n\nasync function setupAndStart() {\n  const appBase = getAppBasePath();\n  log(\"App base path:\", appBase);\n  log(\"App is packaged:\", app.isPackaged);\n  \n  const isDev = !app.isPackaged;\n  \n  let basePath, pythonCmd, scriptPath;\n  \n  if (isDev) {\n    log(\"Dev mode branch\");\n    basePath = path.join(__dirname, \"filament-calculator\");\n    pythonCmd = findEmbeddedPython();\n    if (!pythonCmd) {\n      pythonCmd = \"python\";\n    }\n    scriptPath = path.join(basePath, \"app.py\");\n  } else {\n    log(\"Packaged mode branch\");\n    basePath = path.join(process.resourcesPath, \"app.asar.unpacked\", \"filament-calculator\");\n    const isWin = process.platform === \"win32\";\n    const pythonExe = isWin ? \"python.exe\" : \"python\";\n    pythonCmd = path.join(process.resourcesPath, \"python\", pythonExe);\n    if (!fs.existsSync(pythonCmd) && !isWin) {\n      const python3Cmd = path.join(process.resourcesPath, \"python\", \"python3\");\n      if (fs.existsSync(python3Cmd)) {\n        pythonCmd = python3Cmd;\n      } else {\n        pythonCmd = \"python3\";\n      }\n    }\n    scriptPath = path.join(basePath, \"app.py\");\n    log(\"Using unpacked path:\", basePath);\n    log(\"Resources path:\", process.resourcesPath);\n    log(\"Python cmd:\", pythonCmd);\n  }\n  \n  log(\"Python exists:\", fs.existsSync(pythonCmd), pythonCmd);\n  log(\"Script exists:\", fs.existsSync(scriptPath), scriptPath);\n  \n  if (!fs.existsSync(pythonCmd)) {\n    console.error(\"Python not found:\", pythonCmd);\n    mainWindow.loadFile(path.join(__dirname, \"error.html\"));\n    return;\n  }\n  \n  if (!fs.existsSync(scriptPath)) {\n    console.error(\"Script not found:\", scriptPath);\n    mainWindow.loadFile(path.join(__dirname, \"error.html\"));\n    return;\n  }\n  \n  const pythonDir = path.dirname(pythonCmd);\n  const newPath = pythonDir + path.delimiter + (process.env.PATH || \"\");\n  \n  log(\"Python dir:\", pythonDir);\n  \n  const newEnv = { \n    ...process.env, \n    PYTHONUNBUFFERED: \"1\", \n    PATH: newPath,\n    PYTHONPATH: basePath,\n    FLASK_HOST: CONFIG.flask.host,\n    FLASK_PORT: String(CONFIG.flask.port),\n  };\n\n  // Test python first\n  const testPy = spawn(pythonCmd, [\"-c\", \"import sys; print('PYTHON:', sys.path)\"], {\n    cwd: basePath,\n    env: newEnv,\n    stdio: [\"pipe\", \"pipe\", \"pipe\"],\n    windowsHide: true,\n  });\n  \n  testPy.stdout.on(\"data\", (d) => { log(\"PYTHON TEST OUT:\", d.toString().trim()); });\n  testPy.stderr.on(\"data\", (d) => { log(\"PYTHON TEST ERR:\", d.toString().trim()); });\n  testPy.on(\"close\", (code) => {\n    log(\"Python test exit code:\", code);\n    runFlask();\n  });\n\n  function runFlask() {\n    log(\"PYTHONPATH:\", pythonDir + path.delimiter + pythonPath + path.delimiter + basePath);\n    log(\"Full command:\", `\"${pythonCmd}\" \"${scriptPath}\"`);\n    log(\"CWD:\", basePath);\n\n    flaskProcess = spawn(pythonCmd, [scriptPath], {\n      cwd: basePath,\n      env: newEnv,\n      stdio: [\"pipe\", \"pipe\", \"pipe\"],\n      windowsHide: true,\n    });\n\n    flaskProcess.stdout.on(\"data\", (d) => { log(\"[FLASK]\", d.toString().trim()); });\n    flaskProcess.stderr.on(\"data\", (d) => { log(\"[FLASK]\", d.toString().trim()); });\n    flaskProcess.on(\"close\", () => { flaskProcess = null; });\n    flaskProcess.on(\"error\", (e) => { log(\"[SPAWN ERR]\", e); flaskProcess = null; });\n\n    const flaskUrl = `http://127.0.0.1:${CONFIG.flask.port}`;\n    log(\"Will wait for Flask at:\", flaskUrl);\n    waitForServer(flaskUrl, CONFIG.flask.maxRetries, CONFIG.flask.retryInterval, () => {\n      log(\"Flask server is up, loading URL...\");\n      mainWindow.loadURL(flaskUrl);\n    }, () => {\n      log(\"Flask failed to start, loading error page\");\n      mainWindow.loadFile(path.join(__dirname, \"error.html\"));\n    });\n  }\n}\n\napp.whenReady().then(() => {\n  const logDir = app.isPackaged ? process.resourcesPath : __dirname;\n  logFile = path.join(logDir, \"debug.log\");\n  try { fs.writeFileSync(logFile, \"=== main.js started ===\\n\"); } catch(e) {}\n  \n  log(\"=== APP READY ==\");\n  log(\"App path:\", app.getAppPath());\n  log(\"Resources path:\", process.resourcesPath);\n  log(\"isPackaged:\", app.isPackaged);\n  log(\"__dirname:\", __dirname);\n  \n  mainWindow = createWindow();\n  \n  mainWindow.loadFile(path.join(__dirname, \"loading.html\"));\n  mainWindow.show();\n  \n  setTimeout(() => {\n    setupAndStart().catch((e) => {\n      console.error(\"Error:\", e);\n    });\n  }, CONFIG.timeouts.startupDelay);\n  \n  app.on(\"activate\", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });\n});\n\napp.on(\"window-all-closed\", () => {\n  try { killFlask(); } catch(e) { log(\"window-all-closed error:\", e.message); }\n  setTimeout(() => app.exit(0), CONFIG.timeouts.appExit);\n});\n\napp.on(\"before-quit\", () => { \n  try { killFlask(); } catch(e) { log(\"before-quit error:\", e.message); } \n});\n\napp.on(\"will-quit\", () => { \n  try { killFlask(); } catch(e) { log(\"will-quit error:\", e.message); } \n});\n\nNotable functions:\n- findEmbeddedPython() (lines 52-64): checks bundled python, falls back to system python3 on Linux or python on Windows.\n- setupAndStart() (lines 100-198): detects dev/packaged mode, locates python and script, tests python, then spawns Flask app with environment variables.\n- killFlask() (lines 66-94): kills Flask process with platform-specific signals.\n- waitForServer() (lines 40-58): polls HTTP endpoint until Flask responds 200.\nFiles: ",
+      "type": "finding",
+      "tags": [
+        "code-agent",
+        "auto"
+      ],
+      "timestamp": 1781291055961,
+      "metadata": {},
+      "id": "mem_1781291055961_48",
+      "frequency": 1,
+      "lastAccessed": 1781291055961,
+      "projectCount": 1,
+      "wing": "default",
+      "room": "default",
+      "drawer": "memory"
+    },
+    {
+      "content": "Code agent: Requesting full file content to see current state after previous changes, especially findPython(), findPythonEmbedded(), getPythonCommand() and Flask startup logic.\nFiles: ",
+      "type": "finding",
+      "tags": [
+        "code-agent",
+        "auto"
+      ],
+      "timestamp": 1781291067226,
+      "metadata": {},
+      "id": "mem_1781291067226_49",
+      "frequency": 1,
+      "lastAccessed": 1781291067226,
+      "projectCount": 1,
+      "wing": "default",
+      "room": "default",
+      "drawer": "memory"
+    },
+    {
+      "content": "Code agent: Need to see the current full content of main.js after previous changes\nFiles: ",
+      "type": "finding",
+      "tags": [
+        "code-agent",
+        "auto"
+      ],
+      "timestamp": 1781291074909,
+      "metadata": {},
+      "id": "mem_1781291074909_50",
+      "frequency": 1,
+      "lastAccessed": 1781291074909,
+      "projectCount": 1,
+      "wing": "default",
+      "room": "default",
+      "drawer": "memory"
+    },
+    {
+      "content": "Code agent: User requested the full contents of main.js after previous changes. Need latest version.\nFiles: ",
+      "type": "finding",
+      "tags": [
+        "code-agent",
+        "auto"
+      ],
+      "timestamp": 1781291089811,
+      "metadata": {},
+      "id": "mem_1781291089811_51",
+      "frequency": 1,
+      "lastAccessed": 1781291089811,
+      "projectCount": 1,
+      "wing": "default",
+      "room": "default",
+      "drawer": "memory"
     }
   ],
   "wings": [],
