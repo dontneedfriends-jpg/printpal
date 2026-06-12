@@ -176,41 +176,15 @@ async function setupAndStart() {
     log("Python cmd:", pythonCmd);
   }
   
-  log("Checking Python command...");
+  log("Python exists:", fs.existsSync(pythonCmd), pythonCmd);
+  log("Script exists:", fs.existsSync(scriptPath), scriptPath);
   
-  function commandExists(cmd) {
-    try {
-      const whichCmd = process.platform === "win32" ? "where" : "which";
-      execSync(`${whichCmd} ${cmd}`, { stdio: "ignore" });
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-  
-  const isCommandName = !path.isAbsolute(pythonCmd) && !pythonCmd.includes('/') && !pythonCmd.includes('\\');
-  
-  if (isCommandName) {
-    let found = commandExists(pythonCmd);
-    if (!found) {
-      const fallbackCmd = pythonCmd === "python3" ? "python" : "python3";
-      if (commandExists(fallbackCmd)) {
-        pythonCmd = fallbackCmd;
-        found = true;
-      }
-    }
-    if (!found) {
-      console.error("Python not found (command not available):", pythonCmd);
-      mainWindow.loadFile(path.join(__dirname, "error.html"));
-      return;
-    }
-  } else if (!fs.existsSync(pythonCmd)) {
+  if (!fs.existsSync(pythonCmd)) {
     console.error("Python not found:", pythonCmd);
     mainWindow.loadFile(path.join(__dirname, "error.html"));
     return;
   }
   
-  log("Script exists:", fs.existsSync(scriptPath), scriptPath);
   if (!fs.existsSync(scriptPath)) {
     console.error("Script not found:", scriptPath);
     mainWindow.loadFile(path.join(__dirname, "error.html"));
@@ -247,7 +221,7 @@ async function setupAndStart() {
   });
 
   function runFlask() {
-    log("PYTHONPATH:", pythonDir + path.delimiter + basePath + path.delimiter + basePath);
+    log("PYTHONPATH:", pythonDir + path.delimiter + pythonPath + path.delimiter + basePath);
     log("Full command:", `"${pythonCmd}" "${scriptPath}"`);
     log("CWD:", basePath);
 

@@ -1,0 +1,51 @@
+{
+  "recent": [
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 2,
+      "success": true,
+      "resultLength": 6722,
+      "chatId": "chat_1",
+      "timestamp": 1781291108075
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 3425,
+      "chatId": "chat_1",
+      "timestamp": 1781291110753
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 0,
+      "success": true,
+      "resultLength": 801,
+      "chatId": "chat_1",
+      "timestamp": 1781291117787
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 3101,
+      "chatId": "chat_1",
+      "timestamp": 1781291131879
+    }
+  ],
+  "daily": {
+    "2026-06-12": {
+      "date": "2026-06-12",
+      "totalCalls": 4,
+      "errorCalls": 0,
+      "totalDurationMs": 4,
+      "toolCounts": {
+        "read-file": 4
+      }
+    }
+  }
+}
