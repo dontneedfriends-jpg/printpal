@@ -220,25 +220,7 @@ async function setupAndStart() {
   // Setup virtual environment
   const venvDir = path.join(basePath, 'venv');
   log("Setting up Python virtual environment...");
-  const isWin = process.platform === "win32";
-  const pythonVenvPath = isWin ? path.join(venvDir, 'Scripts', 'python.exe') : path.join(venvDir, 'bin', 'python');
-  
-  if (fs.existsSync(venvDir)) {
-    if (fs.existsSync(pythonVenvPath)) {
-      log("Venv already exists and is valid.");
-    } else {
-      log("Venv exists but is incomplete/corrupted. Deleting and recreating...");
-      fs.rmSync(venvDir, { recursive: true, force: true });
-      try {
-        execSync(`"${pythonCmd}" -m venv "${venvDir}"`, { cwd: basePath, timeout: 60000, stdio: 'pipe' });
-        log("Venv recreated successfully.");
-      } catch (e) {
-        log("Failed to create venv:", e.message);
-        mainWindow.loadFile(path.join(__dirname, "error.html"));
-        return;
-      }
-    }
-  } else {
+  if (!fs.existsSync(venvDir)) {
     log("Creating venv at:", venvDir);
     try {
       execSync(`"${pythonCmd}" -m venv "${venvDir}"`, { cwd: basePath, timeout: 60000, stdio: 'pipe' });
@@ -248,9 +230,13 @@ async function setupAndStart() {
       mainWindow.loadFile(path.join(__dirname, "error.html"));
       return;
     }
+  } else {
+    log("Venv already exists.");
   }
   
+  const isWin = process.platform === "win32";
   const pipPath = isWin ? path.join(venvDir, 'Scripts', 'pip') : path.join(venvDir, 'bin', 'pip');
+  const pythonVenvPath = isWin ? path.join(venvDir, 'Scripts', 'python.exe') : path.join(venvDir, 'bin', 'python');
   
   // Check if Flask is installed
   log("Checking if Flask is installed...");
