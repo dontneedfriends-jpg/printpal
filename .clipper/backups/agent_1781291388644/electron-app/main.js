@@ -217,61 +217,6 @@ async function setupAndStart() {
     return;
   }
   
-  // Setup virtual environment
-  const venvDir = path.join(basePath, 'venv');
-  log("Setting up Python virtual environment...");
-  if (!fs.existsSync(venvDir)) {
-    log("Creating venv at:", venvDir);
-    try {
-      execSync(`"${pythonCmd}" -m venv "${venvDir}"`, { cwd: basePath, timeout: 60000, stdio: 'pipe' });
-      log("Venv created successfully.");
-    } catch (e) {
-      log("Failed to create venv:", e.message);
-      mainWindow.loadFile(path.join(__dirname, "error.html"));
-      return;
-    }
-  } else {
-    log("Venv already exists.");
-  }
-  
-  const isWin = process.platform === "win32";
-  const pipPath = isWin ? path.join(venvDir, 'Scripts', 'pip') : path.join(venvDir, 'bin', 'pip');
-  const pythonVenvPath = isWin ? path.join(venvDir, 'Scripts', 'python.exe') : path.join(venvDir, 'bin', 'python');
-  
-  // Check if Flask is installed
-  log("Checking if Flask is installed...");
-  try {
-    execSync(`"${pythonVenvPath}" -c "import flask"`, { cwd: basePath, timeout: 10000, stdio: 'pipe' });
-    log("Flask is already installed.");
-  } catch (e) {
-    log("Flask not found. Installing dependencies...");
-    const requirementsPath = path.join(basePath, 'requirements.txt');
-    if (fs.existsSync(requirementsPath)) {
-      try {
-        execSync(`"${pipPath}" install -r "${requirementsPath}"`, { cwd: basePath, timeout: 120000, stdio: 'pipe' });
-        log("Dependencies installed successfully.");
-      } catch (installErr) {
-        log("Failed to install dependencies:", installErr.message);
-        mainWindow.loadFile(path.join(__dirname, "error.html"));
-        return;
-      }
-    } else {
-      log("requirements.txt not found. Trying to install flask directly...");
-      try {
-        execSync(`"${pipPath}" install flask`, { cwd: basePath, timeout: 120000, stdio: 'pipe' });
-        log("Flask installed successfully.");
-      } catch (installErr) {
-        log("Failed to install flask:", installErr.message);
-        mainWindow.loadFile(path.join(__dirname, "error.html"));
-        return;
-      }
-    }
-  }
-  
-  // Update pythonCmd to use venv python
-  log("Using python from venv:", pythonVenvPath);
-  pythonCmd = pythonVenvPath;
-  
   const pythonDir = path.dirname(pythonCmd);
   const newPath = pythonDir + path.delimiter + (process.env.PATH || "");
   

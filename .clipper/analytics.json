@@ -35,16 +35,34 @@
       "resultLength": 3101,
       "chatId": "chat_1",
       "timestamp": 1781291131879
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 0,
+      "success": true,
+      "resultLength": 6719,
+      "chatId": "chat_1",
+      "timestamp": 1781291220237
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 4340,
+      "chatId": "chat_1",
+      "timestamp": 1781291227297
     }
   ],
   "daily": {
     "2026-06-12": {
       "date": "2026-06-12",
-      "totalCalls": 4,
+      "totalCalls": 6,
       "errorCalls": 0,
-      "totalDurationMs": 4,
+      "totalDurationMs": 5,
       "toolCounts": {
-        "read-file": 4
+        "read-file": 6
       }
     }
   }
