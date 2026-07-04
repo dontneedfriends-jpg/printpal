@@ -1,0 +1,96 @@
+{
+  "recent": [
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 2,
+      "success": true,
+      "resultLength": 6722,
+      "chatId": "chat_1",
+      "timestamp": 1781291108075
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 3425,
+      "chatId": "chat_1",
+      "timestamp": 1781291110753
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 0,
+      "success": true,
+      "resultLength": 801,
+      "chatId": "chat_1",
+      "timestamp": 1781291117787
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 3101,
+      "chatId": "chat_1",
+      "timestamp": 1781291131879
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 0,
+      "success": true,
+      "resultLength": 6719,
+      "chatId": "chat_1",
+      "timestamp": 1781291220237
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 4340,
+      "chatId": "chat_1",
+      "timestamp": 1781291227297
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 3943,
+      "chatId": "chat_1",
+      "timestamp": 1781291412813
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 1,
+      "success": true,
+      "resultLength": 5137,
+      "chatId": "chat_1",
+      "timestamp": 1781291415474
+    },
+    {
+      "toolName": "read-file",
+      "taskType": "other",
+      "durationMs": 0,
+      "success": true,
+      "resultLength": 163,
+      "chatId": "chat_1",
+      "timestamp": 1781291456043
+    }
+  ],
+  "daily": {
+    "2026-06-12": {
+      "date": "2026-06-12",
+      "totalCalls": 9,
+      "errorCalls": 0,
+      "totalDurationMs": 7,
+      "toolCounts": {
+        "read-file": 9
+      }
+    }
+  }
+}

@@ -2,17 +2,12 @@
   "name": "printpal",
   "version": "1.3.0",
   "description": "Filament tracker and 3D print cost calculator",
-  "homepage": "https://github.com/printpal/printpal",
-  "author": {
-    "name": "PrintPAL",
-    "email": "printpal@example.com"
-  },
+  "author": "PrintPAL",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
     "android:sync": "npx cap sync android",
     "android:open": "npx cap open android",
     "android:build": "cd ../printpal-android && gradlew assembleDebug"
@@ -93,11 +88,6 @@
     },
     "portable": {
       "artifactName": "PrintPAL.exe"
-    },
-    "linux": {
-      "target": ["AppImage", "deb"],
-      "maintainer": "PrintPAL Team <printpal@example.com>",
-      "category": "Utility"
     }
   }
 }

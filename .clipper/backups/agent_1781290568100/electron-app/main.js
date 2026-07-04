@@ -98,10 +98,9 @@ ipcMain.on("win-maximize", () => {
 ipcMain.on("win-close", () => mainWindow && mainWindow.close());
 
 function findEmbeddedPython() {
-  const isWin = process.platform === "win32";
   const candidates = [
-    path.join(__dirname, "python", isWin ? "python.exe" : "python"),
-    path.join(__dirname, "python", isWin ? "python3.exe" : "python3"),
+    path.join(__dirname, "python", "python.exe"),
+    path.join(__dirname, "python", "python3.exe"),
   ];
   
   for (const cmd of candidates) {
@@ -109,8 +108,7 @@ function findEmbeddedPython() {
       return cmd;
     }
   }
-  // Fallback to system python3 on Linux, python on Windows
-  return isWin ? "python" : "python3";
+  return null;
 }
 
 function killFlask() {
@@ -159,143 +157,40 @@ async function setupAndStart() {
   } else {
     log("Packaged mode branch");
     basePath = path.join(process.resourcesPath, "app.asar.unpacked", "filament-calculator");
-    const isWin = process.platform === "win32";
-    const pythonExe = isWin ? "python.exe" : "python";
-    pythonCmd = path.join(process.resourcesPath, "python", pythonExe);
-    if (!fs.existsSync(pythonCmd) && !isWin) {
-      const python3Cmd = path.join(process.resourcesPath, "python", "python3");
-      if (fs.existsSync(python3Cmd)) {
-        pythonCmd = python3Cmd;
-      } else {
-        pythonCmd = "python3";
-      }
-    }
+    pythonCmd = path.join(process.resourcesPath, "python", "python.exe");
     scriptPath = path.join(basePath, "app.py");
     log("Using unpacked path:", basePath);
     log("Resources path:", process.resourcesPath);
     log("Python cmd:", pythonCmd);
   }
   
-  log("Checking Python command...");
+  log("Python exists:", fs.existsSync(pythonCmd), pythonCmd);
+  log("Script exists:", fs.existsSync(scriptPath), scriptPath);
   
-  function commandExists(cmd) {
-    try {
-      const whichCmd = process.platform === "win32" ? "where" : "which";
-      execSync(`${whichCmd} ${cmd}`, { stdio: "ignore" });
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-  
-  const isCommandName = !path.isAbsolute(pythonCmd) && !pythonCmd.includes('/') && !pythonCmd.includes('\\');
-  
-  if (isCommandName) {
-    let found = commandExists(pythonCmd);
-    if (!found) {
-      const fallbackCmd = pythonCmd === "python3" ? "python" : "python3";
-      if (commandExists(fallbackCmd)) {
-        pythonCmd = fallbackCmd;
-        found = true;
-      }
-    }
-    if (!found) {
-      console.error("Python not found (command not available):", pythonCmd);
-      mainWindow.loadFile(path.join(__dirname, "error.html"));
-      return;
-    }
-  } else if (!fs.existsSync(pythonCmd)) {
+  if (!fs.existsSync(pythonCmd)) {
     console.error("Python not found:", pythonCmd);
     mainWindow.loadFile(path.join(__dirname, "error.html"));
     return;
   }
   
-  log("Script exists:", fs.existsSync(scriptPath), scriptPath);
   if (!fs.existsSync(scriptPath)) {
     console.error("Script not found:", scriptPath);
     mainWindow.loadFile(path.join(__dirname, "error.html"));
     return;
   }
   
-  // Setup virtual environment
-  const venvDir = path.join(basePath, 'venv');
-  log("Setting up Python virtual environment...");
-  const isWin = process.platform === "win32";
-  const pythonVenvPath = isWin ? path.join(venvDir, 'Scripts', 'python.exe') : path.join(venvDir, 'bin', 'python');
-  
-  if (fs.existsSync(venvDir)) {
-    if (fs.existsSync(pythonVenvPath)) {
-      log("Venv already exists and is valid.");
-    } else {
-      log("Venv exists but is incomplete/corrupted. Deleting and recreating...");
-      fs.rmSync(venvDir, { recursive: true, force: true });
-      try {
-        execSync(`"${pythonCmd}" -m venv "${venvDir}"`, { cwd: basePath, timeout: 60000, stdio: 'pipe' });
-        log("Venv recreated successfully.");
-      } catch (e) {
-        log("Failed to create venv:", e.message);
-        mainWindow.loadFile(path.join(__dirname, "error.html"));
-        return;
-      }
-    }
-  } else {
-    log("Creating venv at:", venvDir);
-    try {
-      execSync(`"${pythonCmd}" -m venv "${venvDir}"`, { cwd: basePath, timeout: 60000, stdio: 'pipe' });
-      log("Venv created successfully.");
-    } catch (e) {
-      log("Failed to create venv:", e.message);
-      mainWindow.loadFile(path.join(__dirname, "error.html"));
-      return;
-    }
-  }
-  
-  const pipPath = isWin ? path.join(venvDir, 'Scripts', 'pip') : path.join(venvDir, 'bin', 'pip');
-  
-  // Check if Flask is installed
-  log("Checking if Flask is installed...");
-  try {
-    execSync(`"${pythonVenvPath}" -c "import flask"`, { cwd: basePath, timeout: 10000, stdio: 'pipe' });
-    log("Flask is already installed.");
-  } catch (e) {
-    log("Flask not found. Installing dependencies...");
-    const requirementsPath = path.join(basePath, 'requirements.txt');
-    if (fs.existsSync(requirementsPath)) {
-      try {
-        execSync(`"${pipPath}" install -r "${requirementsPath}"`, { cwd: basePath, timeout: 120000, stdio: 'pipe' });
-        log("Dependencies installed successfully.");
-      } catch (installErr) {
-        log("Failed to install dependencies:", installErr.message);
-        mainWindow.loadFile(path.join(__dirname, "error.html"));
-        return;
-      }
-    } else {
-      log("requirements.txt not found. Trying to install flask directly...");
-      try {
-        execSync(`"${pipPath}" install flask`, { cwd: basePath, timeout: 120000, stdio: 'pipe' });
-        log("Flask installed successfully.");
-      } catch (installErr) {
-        log("Failed to install flask:", installErr.message);
-        mainWindow.loadFile(path.join(__dirname, "error.html"));
-        return;
-      }
-    }
-  }
-  
-  // Update pythonCmd to use venv python
-  log("Using python from venv:", pythonVenvPath);
-  pythonCmd = pythonVenvPath;
-  
   const pythonDir = path.dirname(pythonCmd);
+  const pythonPath = path.join(pythonDir, "Lib", "site-packages");
   const newPath = pythonDir + path.delimiter + (process.env.PATH || "");
   
   log("Python dir:", pythonDir);
+  log("Python path:", pythonPath);
   
   const newEnv = { 
     ...process.env, 
     PYTHONUNBUFFERED: "1", 
     PATH: newPath,
-    PYTHONPATH: basePath,
+    PYTHONPATH: pythonDir + path.delimiter + pythonPath + path.delimiter + basePath,
     FLASK_HOST: CONFIG.flask.host,
     FLASK_PORT: String(CONFIG.flask.port),
   };
@@ -316,7 +211,7 @@ async function setupAndStart() {
   });
 
   function runFlask() {
-    log("PYTHONPATH:", pythonDir + path.delimiter + basePath + path.delimiter + basePath);
+    log("PYTHONPATH:", pythonDir + path.delimiter + pythonPath + path.delimiter + basePath);
     log("Full command:", `"${pythonCmd}" "${scriptPath}"`);
     log("CWD:", basePath);
 
@@ -325,6 +220,7 @@ async function setupAndStart() {
       env: newEnv,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      shell: true,
     });
 
     flaskProcess.stdout.on("data", (d) => { log("[FLASK]", d.toString().trim()); });
