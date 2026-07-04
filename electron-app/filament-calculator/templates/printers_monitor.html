@@ -12,61 +12,67 @@
             </div>
             {% endfor %}
         </div>
+        <select class="monitor-printer-select" id="printer-select" onchange="selectPrinterByIndex(this.value)">
+            {% for p in printers %}
+            <option value="{{ loop.index0 }}" {% if loop.first %}selected{% endif %}>{{ p.name }} ({{ p.ip_address }})</option>
+            {% endfor %}
+        </select>
         <div class="monitor-actions">
-            <button id="mode-toggle" class="btn btn-small btn-secondary" onclick="toggleMonitorMode()" title="Toggle view mode">🖥️ Web UI</button>
-            <a id="klipper-link" href="/printers/{{ printers[0].id }}/klipper" class="btn btn-small btn-primary" style="background:var(--accent);">Klipper</a>
-            <a id="direct-link" href="http://{{ printers[0].ip_address }}" target="_blank" class="btn btn-small btn-secondary">{{ _('open_browser') }}</a>
+            <button id="tab-webui" class="btn btn-small btn-secondary monitor-tab" onclick="switchMonitorTab('webui')">🌐 Web UI</button>
+            <button id="tab-klipper" class="btn btn-small btn-primary monitor-tab active" onclick="switchMonitorTab('klipper')">🎛️ Klipper</button>
             <a id="cam-link" href="#" target="_blank" class="btn btn-small btn-secondary" style="display:none;">📷 {{ _('open_camera') }}</a>
         </div>
     </div>
     <div class="monitor-viewer-v2" id="viewer">
         {% for p in printers %}
-        <iframe class="monitor-iframe-v2 webui-frame {% if loop.first %}active{% endif %}" id="iframe-webui-{{ loop.index }}" src="http://{{ p.ip_address }}" title="Web UI {{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
+        <iframe class="monitor-iframe-v2 webui-frame" id="iframe-webui-{{ loop.index }}" src="http://{{ p.ip_address }}" title="Web UI {{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
         <iframe class="monitor-iframe-v2 wrapper-frame {% if loop.first %}active{% endif %}" id="iframe-wrapper-{{ loop.index }}" src="/printers/{{ p.id }}/klipper?embedded=1" title="Klipper {{ p.name }}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" loading="lazy"></iframe>
         {% endfor %}
     </div>
 </div>
 <script>
-var monitorMode = localStorage.getItem('monitor_mode') || 'wrapper';
-
-function applyMonitorMode() {
-    var btn = document.getElementById('mode-toggle');
-    var webuiFrames = document.querySelectorAll('.webui-frame');
-    var wrapperFrames = document.querySelectorAll('.wrapper-frame');
-    if (monitorMode === 'webui') {
-        btn.textContent = '🖥️ Web UI';
-        webuiFrames.forEach(f => f.style.display = f.classList.contains('active') ? 'block' : 'none');
-        wrapperFrames.forEach(f => f.style.display = 'none');
-    } else {
-        btn.textContent = '🎛️ Control';
-        webuiFrames.forEach(f => f.style.display = 'none');
-        wrapperFrames.forEach(f => f.style.display = f.classList.contains('active') ? 'block' : 'none');
-    }
+function selectPrinterByIndex(idx) {
+    var chips = document.querySelectorAll('.monitor-printer-chip');
+    if (chips[idx]) selectPrinter(chips[idx]);
 }
 
-function toggleMonitorMode() {
-    monitorMode = monitorMode === 'webui' ? 'wrapper' : 'webui';
-    localStorage.setItem('monitor_mode', monitorMode);
-    applyMonitorMode();
+function switchMonitorTab(tab) {
+    var webuiBtn = document.getElementById('tab-webui');
+    var klipperBtn = document.getElementById('tab-klipper');
+    var activeIdx = Array.from(document.querySelectorAll('.monitor-printer-chip')).findIndex(function(c) { return c.classList.contains('active'); });
+    if (activeIdx < 0) activeIdx = 0;
+    var webuiFrame = document.getElementById('iframe-webui-' + (activeIdx + 1));
+    var wrapperFrame = document.getElementById('iframe-wrapper-' + (activeIdx + 1));
+    if (tab === 'webui') {
+        if (webuiFrame) webuiFrame.classList.add('active');
+        if (wrapperFrame) wrapperFrame.classList.remove('active');
+        webuiBtn.classList.add('active'); webuiBtn.classList.remove('btn-secondary'); webuiBtn.classList.add('btn-primary');
+        klipperBtn.classList.remove('active'); klipperBtn.classList.remove('btn-primary'); klipperBtn.classList.add('btn-secondary');
+    } else {
+        if (wrapperFrame) wrapperFrame.classList.add('active');
+        if (webuiFrame) webuiFrame.classList.remove('active');
+        klipperBtn.classList.add('active'); klipperBtn.classList.remove('btn-secondary'); klipperBtn.classList.add('btn-primary');
+        webuiBtn.classList.remove('active'); webuiBtn.classList.remove('btn-primary'); webuiBtn.classList.add('btn-secondary');
+    }
 }
 
 function selectPrinter(el) {
     document.querySelectorAll('.monitor-printer-chip').forEach(b => b.classList.remove('active'));
     el.classList.add('active');
-    const ip = el.dataset.ip;
-    const cam = el.dataset.cam;
-    const id = el.dataset.id;
-    const idx = Array.from(document.querySelectorAll('.monitor-printer-chip')).indexOf(el);
-    
-    document.querySelectorAll('.monitor-iframe-v2').forEach(f => f.classList.remove('active'));
-    const webuiFrame = document.getElementById('iframe-webui-' + (idx + 1));
-    const wrapperFrame = document.getElementById('iframe-wrapper-' + (idx + 1));
-    if (webuiFrame) webuiFrame.classList.add('active');
-    if (wrapperFrame) wrapperFrame.classList.add('active');
-    
-    document.getElementById('direct-link').href = 'http://' + ip;
-    document.getElementById('klipper-link').href = '/printers/' + id + '/klipper';
-    
+    var ip = el.dataset.ip;
+    var cam = el.dataset.cam;
+    var idx = Array.from(document.querySelectorAll('.monitor-printer-chip')).indexOf(el);
+    var activeTab = document.getElementById('tab-klipper').classList.contains('active') ? 'klipper' : 'webui';
+
+    document.querySelectorAll('.monitor-iframe-v2').forEach(function(f) { f.classList.remove('active'); });
+    var webuiFrame = document.getElementById('iframe-webui-' + (idx + 1));
+    var wrapperFrame = document.getElementById('iframe-wrapper-' + (idx + 1));
+    if (activeTab === 'webui') {
+        if (webuiFrame) webuiFrame.classList.add('active');
+    } else {
+        if (wrapperFrame) wrapperFrame.classList.add('active');
+    }
+
     var camLink = document.getElementById('cam-link');
     if (cam) {
         camLink.href = 'http://' + cam;
@@ -74,17 +80,25 @@ function selectPrinter(el) {
     } else {
         camLink.style.display = 'none';
     }
-    
-    applyMonitorMode();
 }
 
-applyMonitorMode();
+(function() {
+    var first = document.querySelector('.monitor-printer-chip.active');
+    if (first) selectPrinter(first);
+})();
+
+// Sync select dropdown when chip is clicked
+document.querySelectorAll('.monitor-printer-chip').forEach(function(chip, i) {
+    chip.addEventListener('click', function() {
+        document.getElementById('printer-select').value = i;
+    });
+});
 </script>
 <style>
 .monitor-layout-v2 {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 90px);
+    min-height: calc(100vh - 90px);
     gap: 0.5rem;
 }
 .monitor-topbar {
@@ -133,24 +147,32 @@ applyMonitorMode();
 .mp-chip-name { font-weight: 600; font-size: 0.88rem; color: var(--text); }
 .mp-chip-ip { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; font-family: 'SF Mono', 'Courier New', monospace; }
 .monitor-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+.monitor-tab { font-size: 0.8rem; }
+.monitor-tab.active { box-shadow: 0 0 0 2px var(--accent-light); }
 .monitor-viewer-v2 {
     flex: 1;
     border-radius: 12px;
     border: 1px solid var(--border);
-    overflow: hidden;
+    overflow: visible;
     background: var(--bg-card);
     position: relative;
-    min-height: 0;
+    min-height: 1400px;
 }
 .monitor-iframe-v2 {
     width: 100%;
-    height: 100%;
+    height: 1400px;
+    min-height: 1400px;
     border: none;
     display: none;
-    position: absolute;
-    top: 0; left: 0;
+    position: relative;
 }
 .monitor-iframe-v2.active { display: block; }
+.monitor-printer-select { display:none; padding:0.45rem 0.6rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); font-size:0.85rem; flex:1; min-width:0; }
+@media (max-width: 768px) {
+    .monitor-printer-list { display:none !important; }
+    .monitor-printer-select { display:block; }
+    .monitor-actions .btn-small { font-size:0.75rem; padding:0.3rem 0.45rem; }
+}
 </style>
 {% else %}
 <div class="card">

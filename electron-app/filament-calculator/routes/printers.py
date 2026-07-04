@@ -3,10 +3,15 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import math
+import csv
+import io
 
+import logging
 from flask import Blueprint, request, redirect, url_for, jsonify, render_template, Response
 from database import get_db
 from utils import safe_float, safe_int
+
+logger = logging.getLogger(__name__)
 
 QUICK_SCRIPTS = {
     "preheat_pla": {"label": "Preheat PLA", "script": "M104 S210\nM140 S60", "icon": "🔥"},
@@ -200,6 +205,8 @@ def klipper_proxy(id, moonraker_path):
         else:
             body = request.get_data(as_text=True)
 
+    if request.query_string:
+        moonraker_path += '?' + request.query_string.decode('utf-8')
     raw, status, resp_ct = _proxy_request(ip, port, method, moonraker_path, body, ct, api_key)
 
     if resp_ct.startswith("application/json"):
@@ -378,3 +385,83 @@ def klipper_macros(id):
         return jsonify({"ok": True, "macros": macros})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@printers_bp.route("/api/printers/status")
+def api_printers_status():
+    db = get_db()
+    printers = db.execute("SELECT * FROM printers WHERE ip_address IS NOT NULL AND ip_address != '' ORDER BY name").fetchall()
+    db.close()
+    results = []
+    for p in printers:
+        ip = p["ip_address"]
+        port = int(p.get("moonraker_port", 7125))
+        api_key = p.get("moonraker_api_key", "") or ""
+        try:
+            raw, status, _ = _proxy_request(ip, port, "GET", "printer/objects/query?webhooks&print_stats&virtual_sdcard=progress,is_active", api_key=api_key)
+            if status != 200:
+                results.append({"id": p["id"], "name": p["name"], "state": "error", "print_state": "error", "filename": "", "progress": 0})
+                continue
+            data = _json.loads(raw)
+            s = data.get("result", {}).get("status", {})
+            wh = s.get("webhooks", {})
+            ps = s.get("print_stats", {})
+            vsd = s.get("virtual_sdcard", {})
+            results.append({
+                "id": p["id"],
+                "name": p["name"],
+                "state": wh.get("state", "unknown"),
+                "print_state": ps.get("state", "standby"),
+                "filename": ps.get("filename", "") or "",
+                "progress": vsd.get("progress", 0),
+                "print_duration": ps.get("print_duration", 0),
+                "filament_used": ps.get("filament_used", 0),
+            })
+        except Exception as e:
+            logger.warning(f"Widget poll error for {p['name']}: {e}")
+            results.append({"id": p["id"], "name": p["name"], "state": "disconnected", "print_state": "disconnected", "filename": "", "progress": 0})
+    return jsonify(results)
+
+
+@printers_bp.route("/printers/import_csv", methods=["POST"])
+def import_csv():
+    f = request.files.get("csv_file")
+    if not f:
+        return jsonify({"ok": False, "error": "No file"}), 400
+    raw = f.read().decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(raw))
+    db = get_db()
+    imported = 0
+    skipped = 0
+    errors = []
+    for i, row in enumerate(reader, start=2):
+        name = (row.get("name") or "").strip()
+        if not name:
+            skipped += 1
+            errors.append(i)
+            continue
+        try:
+            db.execute(
+                "INSERT INTO printers (name, power_watts, purchase_price, depreciation_per_hour, ip_address, tags, moonraker_port, filament_diameter, maintenance_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    name,
+                    safe_float(row.get("power_watts"), 200, 1, 10000),
+                    safe_float(row.get("purchase_price"), 0, 0, 1000000),
+                    safe_float(row.get("depreciation_per_hour"), 0, 0, 100),
+                    row.get("ip_address", "") or "",
+                    row.get("tags", "") or "",
+                    safe_int(row.get("moonraker_port"), 7125, 1, 65535),
+                    safe_float(row.get("filament_diameter"), 1.75, 0.5, 5.0),
+                    safe_float(row.get("maintenance_hours"), 0, 0, 100000),
+                ),
+            )
+            imported += 1
+        except Exception:
+            skipped += 1
+            errors.append(i)
+    db.commit()
+    db.close()
+    return jsonify({"ok": True, "imported": imported, "skipped": skipped, "errors": errors})
+
+
+

@@ -1,10 +1,11 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, Response
+from flask import Blueprint, request, render_template, redirect, url_for, flash, Response, jsonify
 from database import get_db, get_settings
 from config import DEFAULT_ELECTRICITY_RATE, DEFAULT_BASE_RATE, DEFAULT_MARKUP_PERCENT
 from utils import safe_float
 from translations import t as _t
 import json
 import os
+from datetime import datetime
 
 settings_bp = Blueprint("settings", __name__)
 
@@ -164,5 +165,111 @@ def save_maintenance():
     db.close()
     flash(_t(request.lang, "maintenance_saved"), "success")
     return redirect(url_for(".settings"))
+
+
+@settings_bp.route("/settings/monitor_mode", methods=["POST"])
+def save_monitor_mode():
+    db = get_db()
+    checked = set()
+    for key, val in request.form.items():
+        if key.startswith("webui_mode_"):
+            pid = key.replace("webui_mode_", "")
+            db.execute("UPDATE printers SET webui_mode = ? WHERE id = ?", (int(val), pid))
+        if key.startswith("auto_deduct_"):
+            pid = key.replace("auto_deduct_", "")
+            checked.add(pid)
+            db.execute("UPDATE printers SET auto_deduct = 1 WHERE id = ?", (pid,))
+    for key, val in request.form.items():
+        if key.startswith("webui_mode_"):
+            pid = key.replace("webui_mode_", "")
+            if pid not in checked:
+                db.execute("UPDATE printers SET auto_deduct = 0 WHERE id = ?", (pid,))
+    db.commit()
+    db.close()
+    flash("Режим монитора сохранён", "success")
+    return redirect(url_for(".settings"))
+
+
+@settings_bp.route("/settings/backup")
+def backup_json():
+    db = get_db()
+    backup = {
+        "version": "1.0",
+        "timestamp": datetime.now().isoformat(),
+        "settings": [dict(r) for r in db.execute("SELECT key, value FROM settings").fetchall()],
+        "printers": [dict(r) for r in db.execute("SELECT * FROM printers").fetchall()],
+        "filaments": [dict(r) for r in db.execute("SELECT * FROM filaments").fetchall()],
+        "calculations": [dict(r) for r in db.execute("SELECT * FROM calculations").fetchall()],
+        "clients": [dict(r) for r in db.execute("SELECT * FROM clients").fetchall()],
+        "maintenance_logs": [dict(r) for r in db.execute("SELECT * FROM maintenance_logs").fetchall()],
+    }
+    db.close()
+    resp = jsonify(backup)
+    ts = backup["timestamp"].replace(":", "-").split(".")[0]
+    resp.headers["Content-Disposition"] = f"attachment; filename=printpal-backup-{ts}.json"
+    return resp
+
+
+@settings_bp.route("/settings/restore", methods=["POST"])
+def restore_json():
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        flash("Файл бэкапа повреждён или пуст", "error")
+        return redirect(url_for(".settings"))
+    db = get_db()
+    counts = {"settings": 0, "printers": 0, "filaments": 0, "calculations": 0, "clients": 0, "maintenance_logs": 0}
+    try:
+        # FK-safe delete order: children first
+        db.execute("DELETE FROM maintenance_logs")
+        db.execute("DELETE FROM calculations")
+        db.execute("DELETE FROM filaments")
+        db.execute("DELETE FROM printers")
+        db.execute("DELETE FROM clients")
+        db.execute("DELETE FROM settings")
+        db.commit()
+
+        for row in data.get("settings") or []:
+            db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (row.get("key"), row.get("value")))
+            counts["settings"] += 1
+        for row in data.get("clients") or []:
+            r = {k: row.get(k) for k in ("id", "name", "contact", "notes", "created_at")}
+            db.execute("INSERT INTO clients (id, name, contact, notes, created_at) VALUES (?, ?, ?, ?, ?)",
+                       (r["id"], r["name"], r["contact"], r["notes"], r["created_at"]))
+            counts["clients"] += 1
+        for row in data.get("printers") or []:
+            cols = [k for k in row.keys() if k != "rowid"]
+            placeholders = ",".join(["?"] * len(cols))
+            values = [row.get(c) for c in cols]
+            col_list = ",".join(cols)
+            db.execute(f"INSERT INTO printers ({col_list}) VALUES ({placeholders})", values)
+            counts["printers"] += 1
+        for row in data.get("filaments") or []:
+            cols = [k for k in row.keys() if k != "rowid"]
+            placeholders = ",".join(["?"] * len(cols))
+            values = [row.get(c) for c in cols]
+            col_list = ",".join(cols)
+            db.execute(f"INSERT INTO filaments ({col_list}) VALUES ({placeholders})", values)
+            counts["filaments"] += 1
+        for row in data.get("calculations") or []:
+            cols = [k for k in row.keys() if k != "rowid"]
+            placeholders = ",".join(["?"] * len(cols))
+            values = [row.get(c) for c in cols]
+            col_list = ",".join(cols)
+            db.execute(f"INSERT INTO calculations ({col_list}) VALUES ({placeholders})", values)
+            counts["calculations"] += 1
+        for row in data.get("maintenance_logs") or []:
+            cols = [k for k in row.keys() if k != "rowid"]
+            placeholders = ",".join(["?"] * len(cols))
+            values = [row.get(c) for c in cols]
+            col_list = ",".join(cols)
+            db.execute(f"INSERT INTO maintenance_logs ({col_list}) VALUES ({placeholders})", values)
+            counts["maintenance_logs"] += 1
+        db.commit()
+        flash(f"Бэкап восстановлен: {sum(counts.values())} записей", "success")
+        return redirect(url_for(".settings"))
+    except Exception as e:
+        db.rollback()
+        flash(f"Ошибка восстановления: {e}", "error")
+        return redirect(url_for(".settings"))
 
 

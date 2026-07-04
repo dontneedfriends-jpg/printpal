@@ -86,6 +86,31 @@
         </form>
     </div>
 </div>
+<div class="card">
+    <div class="settings-section">
+        <h3>Режим монитора</h3>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">Web UI — встроенный браузер принтера, Klipper — наша реализация</p>
+        <form method="POST" action="{{ url_for('save_monitor_mode') }}">
+            {% for p in printers %}
+                <div class="settings-row">
+                <label>{{ p.name }}</label>
+                <div class="theme-options" style="display:flex; gap:0.35rem;">
+                    <button type="button" class="theme-option {% if not p.webui_mode %}active{% endif %}" onclick="setMonitorMode(this, '{{ p.id }}', 0)">🎛️ Klipper</button>
+                    <button type="button" class="theme-option {% if p.webui_mode %}active{% endif %}" onclick="setMonitorMode(this, '{{ p.id }}', 1)">🖥️ Web UI</button>
+                </div>
+                <input type="hidden" name="webui_mode_{{ p.id }}" id="webui_mode_{{ p.id }}" value="{{ p.webui_mode or 0 }}">
+                <label style="font-size:0.82rem; margin-left:1rem; display:flex; align-items:center; gap:0.3rem; white-space:nowrap;">
+                    <input type="checkbox" name="auto_deduct_{{ p.id }}" value="1" {% if p.auto_deduct %}checked{% endif %}>
+                    Автосписание
+                </label>
+            </div>
+            {% endfor %}
+            <div class="form-actions" style="margin-top:1rem;">
+                <button type="submit" class="btn btn-primary">{{ _('save') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endif %}
 
 <div class="card">
@@ -158,6 +183,20 @@
         <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
             <a href="{{ url_for('export_history') }}" class="btn btn-primary">📥 {{ _('export_csv') }}</a>
             <button class="btn btn-danger" onclick="clearHistory()">{{ _('clear_history') }}</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="settings-section">
+        <h3>Резервная копия</h3>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">Полный дамп базы в JSON. Восстановление заменяет все текущие данные.</p>
+        <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap; align-items:center;">
+            <a href="/settings/backup" class="btn btn-primary">📦 Скачать бэкап (JSON)</a>
+            <input type="file" id="backup-file-input" accept=".json,application/json" style="display:none;">
+            <button class="btn btn-secondary" onclick="document.getElementById('backup-file-input').click()">📂 Выбрать файл...</button>
+            <button class="btn btn-danger" id="backup-restore-btn" disabled onclick="restoreBackup()">Восстановить из JSON</button>
+            <span id="backup-filename" style="font-size:0.82rem; color:var(--text-muted);"></span>
         </div>
     </div>
 </div>
@@ -251,6 +290,64 @@ function clearHistory() {
         if (!ok) return;
         fetch('/settings/clear_history', { method: 'POST', body: new FormData() })
         .then(function() { location.reload(); });
+    });
+}
+
+function setMonitorMode(btn, printerId, mode) {
+    var container = btn.closest('.settings-row');
+    container.querySelectorAll('.theme-option').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('webui_mode_' + printerId).value = mode;
+}
+
+(function() {
+    var input = document.getElementById('backup-file-input');
+    var btn = document.getElementById('backup-restore-btn');
+    var nameSpan = document.getElementById('backup-filename');
+    if (!input) return;
+    input.addEventListener('change', function() {
+        if (input.files && input.files[0]) {
+            nameSpan.textContent = input.files[0].name;
+            btn.disabled = false;
+        } else {
+            nameSpan.textContent = '';
+            btn.disabled = true;
+        }
+    });
+    window._backupFile = null;
+    input.addEventListener('change', function() {
+        window._backupFile = input.files && input.files[0] ? input.files[0] : null;
+    });
+})();
+
+function restoreBackup() {
+    if (!window._backupFile) return;
+    var msg = LANG === 'ru'
+        ? 'Восстановить данные из бэкапа? ВСЕ текущие данные будут заменены.'
+        : LANG === 'es'
+        ? '¿Restaurar desde backup? TODOS los datos actuales se reemplazarán.'
+        : 'Restore from backup? ALL current data will be replaced.';
+    var title = LANG === 'ru' ? 'Восстановление' : LANG === 'es' ? 'Restaurar' : 'Restore';
+    appConfirm(msg, title).then(function(ok) {
+        if (!ok) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var payload;
+            try { payload = JSON.parse(e.target.result); }
+            catch (err) {
+                showToast(LANG === 'ru' ? 'Невалидный JSON' : 'Invalid JSON', 'error');
+                return;
+            }
+            fetch('/settings/restore', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            }).then(function(resp) {
+                if (resp.ok) location.reload();
+                else { showToast(LANG === 'ru' ? 'Ошибка восстановления' : 'Restore failed', 'error'); location.reload(); }
+            });
+        };
+        reader.readAsText(window._backupFile);
     });
 }
 </script>

@@ -129,6 +129,10 @@ def init_db():
             conn.execute("ALTER TABLE printers ADD COLUMN filament_diameter REAL DEFAULT 1.75")
         if "active_filament_id" not in columns:
             conn.execute("ALTER TABLE printers ADD COLUMN active_filament_id INTEGER DEFAULT NULL REFERENCES filaments(id)")
+        if "webui_mode" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN webui_mode INTEGER DEFAULT 0")
+        if "auto_deduct" not in columns:
+            conn.execute("ALTER TABLE printers ADD COLUMN auto_deduct INTEGER DEFAULT 1")
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning(f"Migration printers columns: {e}")
 

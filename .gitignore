@@ -13,3 +13,7 @@ RELEASE_NOTES.md
 resources/
 app.asar
 app.asar.unpacked
+/electron-app/dist10
+/electron-app/dist7
+/electron-app/dist8
+/electron-app/dist9

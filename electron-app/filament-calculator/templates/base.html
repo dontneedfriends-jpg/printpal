@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3">
     <link rel="stylesheet" href="{{ url_for('theme_css') }}?preset={{ request.cookies.get('preset', 'modern') }}&theme={{ request.cookies.get('theme', 'light') }}&glass={{ request.cookies.get('glass', '1') }}&v=2">
 </head>
-<body>
+<body class="{% if request.args.get('embedded') == '1' %}embedded-mode{% endif %}">
     <div id="browser-banner" style="display:none; background:#f59e0b; color:#1a1a2e; text-align:center; padding:0.4rem 1rem; font-size:0.82rem; font-weight:500;">
         ⚡ {{ _('browser_mode_hint') }}
     </div>
@@ -119,9 +119,6 @@
     var LANG = {{ lang | tojson }};
     var T = {{ translations | tojson }};
     var isEmbedded = {{ (request.args.get('embedded') == '1') | tojson }};
-    if (isEmbedded) {
-        document.body.classList.add('embedded-mode');
-    }
     var isElectron = navigator.userAgent.includes('Electron') || window.electronAPI?.isElectron;
     var isStandalone = matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches;
     var isNarrow = matchMedia('(max-width: 768px)').matches;

@@ -162,7 +162,13 @@ def save_calculation():
     first_fid = filament_ids[0] if filament_ids else 1
     filament_data_json = json.dumps(details["filament_costs"], ensure_ascii=False)
     client_id = request.form.get("client_id") or None
-    
+
+    if request.form.get("operator_confirmed") != "1":
+        logger.warning(f"Save blocked: operator confirmation missing for '{request.form.get('model_name', '')}'")
+        db.close()
+        return jsonify({"ok": False, "error": "Требуется подтверждение оператора"}), 400
+    logger.info(f"Operator confirmed save for: {request.form.get('model_name', '')}")
+
     try:
         db.execute(
             "INSERT INTO calculations (printer_id, filament_id, model_name, weight_g, print_time_hours, base_rate, filament_cost, electricity_cost, depreciation_cost, other_expenses, markup_percent, markup_amount, total_cost, model_file, model_orig_name, filament_data, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

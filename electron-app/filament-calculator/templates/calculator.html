@@ -85,6 +85,7 @@
         <div class="form-group form-actions">
             <button type="submit" formaction="{{ url_for('preview_cost') }}" class="btn btn-primary">{{ _('preview') }}</button>
             {% if preview %}
+            <label class="confirm-check"><input type="checkbox" id="operator_confirmed" name="operator_confirmed" value="1" required> ✅ Я подтвердил печать вручную</label>
             <button type="button" class="btn btn-success" onclick="saveCalculation()">{{ _('save_calc') }}</button>
             {% endif %}
         </div>
@@ -121,6 +122,10 @@
 {% endif %}
 
 <style>
+.confirm-check { display:inline-flex; align-items:center; gap:0.4rem; padding:0.5rem 0.8rem; border:1px solid var(--glass-border); border-radius:8px; background:var(--glass-bg); backdrop-filter:var(--glass-backdrop); -webkit-backdrop-filter:var(--glass-backdrop); color:var(--text); font-size:0.85rem; cursor:pointer; user-select:none; }
+.confirm-check:hover { background:var(--glass-bg-hover); }
+.confirm-check input { cursor:pointer; }
+
 .filament-row { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.4rem; }
 .filament-row input { flex:1; padding:0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text); font-size:0.88rem; min-width:80px; }
 .add-filament-btn { width:32px; height:32px; padding:0; border:1px solid var(--border); border-radius:8px; background:var(--glass-bg); color:var(--text); cursor:pointer; font-size:1.1rem; flex-shrink:0; }
@@ -290,6 +295,10 @@
     };
 
     window.saveCalculation = function() {
+        if (!document.getElementById('operator_confirmed').checked) {
+            showToast('Подтвердите печать!', 'error');
+            return;
+        }
         var form = document.querySelector('form');
         var fd = new FormData(form);
         fd.append('printer_id', document.getElementById('printer_id').value);
